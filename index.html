@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>КосмоТетрис — VK Mini Apps</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', 'Geneva', sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 12px;
+    color: #000;
+  }
+  .vk-tetris {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    max-width: 480px;
+    width: 100%;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .vk-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    background: #fff;
+    border: 1px solid #e1e3e6;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .vk-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .vk-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #2688EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .vk-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #000;
+  }
+  .vk-score-box {
+    text-align: right;
+  }
+  .vk-score-label {
+    font-size: 11px;
+    color: #818c99;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .vk-score-value {
+    font-size: 20px;
+    font-weight: 500;
+    color: #2688EB;
+    font-variant-numeric: tabular-nums;
+  }
+  .vk-main {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .vk-board-wrap {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e1e3e6;
+    background: #0a0a1a;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .vk-canvas {
+    display: block;
+  }
+  .vk-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 120px;
+    flex: 1;
+    max-width: 160px;
+  }
+  .vk-card {
+    background: #fff;
+    border: 1px solid #e1e3e6;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .vk-card-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: #818c99;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .vk-next-canvas {
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+    background: #0a0a1a;
+  }
+  .vk-stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .vk-stat-label {
+    color: #818c99;
+  }
+  .vk-stat-value {
+    font-weight: 500;
+    color: #000;
+    font-variant-numeric: tabular-nums;
+  }
+  .vk-leader-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .vk-leader-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .vk-leader-item:last-child { border-bottom: none; }
+  .vk-leader-rank {
+    width: 18px;
+    text-align: center;
+    font-weight: 500;
+    color: #818c99;
+  }
+  .vk-leader-rank.gold { color: #f4a000; }
+  .vk-leader-rank.silver { color: #a0a0a0; }
+  .vk-leader-rank.bronze { color: #cd7f32; }
+  .vk-leader-name { flex: 1; color: #000; }
+  .vk-leader-score {
+    font-weight: 500;
+    color: #2688EB;
+    font-variant-numeric: tabular-nums;
+  }
+  .vk-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 10, 26, 0.88);
+    gap: 10px;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+  }
+  .vk-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .vk-overlay-title {
+    font-size: 20px;
+    font-weight: 500;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+  .vk-overlay-sub {
+    font-size: 14px;
+    color: rgba(255,255,255,0.7);
+    text-align: center;
+    padding: 0 16px;
+  }
+  .vk-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .vk-btn-primary {
+    background: #2688EB;
+    color: #fff;
+  }
+  .vk-btn-primary:hover { background: #237bdb; }
+  .vk-btn-primary:active { transform: translateY(1px); }
+  .vk-btn-secondary {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .vk-btn-secondary:hover { background: rgba(255,255,255,0.2); }
+  .vk-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(2, 56px);
+    gap: 8px;
+    justify-content: center;
+    margin-top: 4px;
+  }
+  .vk-key {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    border: 1px solid #e1e3e6;
+    background: #f5f5f5;
+    color: #818c99;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    font-family: inherit;
+  }
+  .vk-key:hover {
+    background: #fff;
+    color: #000;
+  }
+  .vk-key:active {
+    background: #ebedf0;
+    transform: scale(0.95);
+  }
+  .vk-key.empty { visibility: hidden; }
+  .vk-drop-btn {
+    grid-column: span 3;
+    width: auto;
+    height: 44px;
+    font-size: 14px;
+    font-weight: 500;
+    background: #2688EB;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+  }
+  .vk-drop-btn:hover { background: #237bdb; }
+  .vk-drop-btn:active { transform: scale(0.98); }
+  .vk-hint {
+    font-size: 12px;
+    color: #99a2ad;
+    text-align: center;
+  }
+  .vk-input {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 14px;
+    width: 160px;
+    text-align: center;
+    font-family: inherit;
+    outline: none;
+  }
+  .vk-input::placeholder { color: rgba(255,255,255,0.5); }
+  .vk-input:focus {
+    border-color: #2688EB;
+    background: rgba(255,255,255,0.15);
+  }
+  @media (max-width: 420px) {
+    .vk-sidebar { flex-direction: row; max-width: 100%; flex-wrap: wrap; }
+    .vk-card { flex: 1; min-width: 100px; }
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0a0a1a; }
+    .vk-header, .vk-card { background: #1a1a2e; border-color: #2a2a3e; }
+    .vk-title, .vk-stat-value, .vk-leader-name { color: #fff; }
+    .vk-key { background: #1a1a2e; border-color: #2a2a3e; color: #99a2ad; }
+    .vk-key:hover { background: #2a2a3e; color: #fff; }
+  }
+</style>
+</head>
+<body>
+
+<div class="vk-tetris" id="vk-tetris">
+  <div class="vk-header">
+    <div class="vk-header-left">
+      <div class="vk-avatar">🚀</div>
+      <div class="vk-title">КосмоТетрис VK</div>
+    </div>
+    <div class="vk-score-box">
+      <div class="vk-score-label">Счёт</div>
+      <div class="vk-score-value" id="vk-score">0</div>
+    </div>
+  </div>
+
+  <div class="vk-main">
+    <div class="vk-board-wrap">
+      <canvas id="vk-board" class="vk-canvas" width="220" height="440"></canvas>
+      <div class="vk-overlay" id="vk-overlay">
+        <div class="vk-overlay-title">КосмоТетрис</div>
+        <div class="vk-overlay-sub" id="vk-overlay-sub">Собери линии среди звёзд</div>
+        <input type="text" class="vk-input" id="vk-player-name" placeholder="Твоё имя" maxlength="12">
+        <button class="vk-btn vk-btn-primary" id="vk-start-btn">Играть</button>
+      </div>
+    </div>
+
+    <div class="vk-sidebar">
+      <div class="vk-card">
+        <div class="vk-card-title">Следующая</div>
+        <canvas id="vk-next" class="vk-next-canvas" width="80" height="80"></canvas>
+      </div>
+      <div class="vk-card">
+        <div class="vk-card-title">Статистика</div>
+        <div class="vk-stat-row"><span class="vk-stat-label">Уровень</span><span class="vk-stat-value" id="vk-level">1</span></div>
+        <div class="vk-stat-row"><span class="vk-stat-label">Линии</span><span class="vk-stat-value" id="vk-lines">0</span></div>
+      </div>
+      <div class="vk-card">
+        <div class="vk-card-title">🏆 Топ</div>
+        <ul class="vk-leader-list" id="vk-leaderboard">
+          <li class="vk-leader-item"><span class="vk-leader-rank">—</span><span class="vk-leader-name">Нет рекордов</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="vk-controls">
+    <button class="vk-key empty"></button>
+    <button class="vk-key" data-key="ArrowUp">↻</button>
+    <button class="vk-key empty"></button>
+    <button class="vk-key" data-key="ArrowLeft">←</button>
+    <button class="vk-key" data-key="ArrowDown">↓</button>
+    <button class="vk-key" data-key="ArrowRight">→</button>
+    <button class="vk-key vk-drop-btn" data-key="Space">⬇ Ускорить</button>
+  </div>
+  <div class="vk-hint">Пробел — сброс · P — пауза</div>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('vk-board');
+  const ctx = canvas.getContext('2d');
+  const nextCanvas = document.getElementById('vk-next');
+  const nextCtx = nextCanvas.getContext('2d');
+  const overlay = document.getElementById('vk-overlay');
+  const overlaySub = document.getElementById('vk-overlay-sub');
+  const startBtn = document.getElementById('vk-start-btn');
+  const playerNameInput = document.getElementById('vk-player-name');
+  const scoreEl = document.getElementById('vk-score');
+  const levelEl = document.getElementById('vk-level');
+  const linesEl = document.getElementById('vk-lines');
+  const leaderboardEl = document.getElementById('vk-leaderboard');
+
+  const COLS = 10, ROWS = 20, BLOCK = 22;
+  canvas.width = COLS * BLOCK;
+  canvas.height = ROWS * BLOCK;
+
+  const COLORS = {
+    I: '#00e5ff', O: '#ffea00', T: '#aa00ff',
+    S: '#00e676', Z: '#ff1744', J: '#2979ff', L: '#ff9100',
+  };
+  const SHAPES = {
+    I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+    O: [[1,1],[1,1]],
+    T: [[0,1,0],[1,1,1],[0,0,0]],
+    S: [[0,1,1],[1,1,0],[0,0,0]],
+    Z: [[1,1,0],[0,1,1],[0,0,0]],
+    J: [[1,0,0],[1,1,1],[0,0,0]],
+    L: [[0,0,1],[1,1,1],[0,0,0]],
+  };
+  const PIECE_KEYS = Object.keys(SHAPES);
+
+  let board = [], current = null, nextType = null;
+  let score = 0, lines = 0, level = 1;
+  let dropTimer = null, dropInterval = 800;
+  let gameOver = false, paused = false, started = false;
+  let stars = [];
+  let leaderboard = [];
+  let playerName = 'Аноним';
+
+  // Load leaderboard
+  try {
+    const saved = localStorage.getItem('vk_tetris_lb');
+    if (saved) leaderboard = JSON.parse(saved);
+  } catch(e) {}
+
+  function saveLeaderboard() {
+    try { localStorage.setItem('vk_tetris_lb', JSON.stringify(leaderboard)); } catch(e) {}
+  }
+
+  function renderLeaderboard() {
+    const sorted = leaderboard.sort((a,b) => b.score - a.score).slice(0,5);
+    if (!sorted.length) {
+      leaderboardEl.innerHTML = '<li class="vk-leader-item"><span class="vk-leader-rank">—</span><span class="vk-leader-name">Нет рекордов</span></li>';
+      return;
+    }
+    leaderboardEl.innerHTML = sorted.map((e,i) => {
+      const rankClass = i===0 ? 'gold' : i===1 ? 'silver' : i===2 ? 'bronze' : '';
+      return `<li class="vk-leader-item"><span class="vk-leader-rank ${rankClass}">${i+1}</span><span class="vk-leader-name">${e.name}</span><span class="vk-leader-score">${e.score}</span></li>`;
+    }).join('');
+  }
+  renderLeaderboard();
+
+  function initStars() {
+    stars = [];
+    for (let i = 0; i < 50; i++) {
+      stars.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+        r: Math.random()*1.2+0.3, alpha: Math.random(), speed: Math.random()*0.02+0.005 });
+    }
+  }
+
+  function createPiece(type) {
+    return { type, x: Math.floor((COLS - SHAPES[type][0].length)/2), y: 0,
+      shape: SHAPES[type].map(r => [...r]) };
+  }
+  function randomPiece() { 
+    const type = nextType || PIECE_KEYS[Math.floor(Math.random()*PIECE_KEYS.length)];
+    nextType = PIECE_KEYS[Math.floor(Math.random()*PIECE_KEYS.length)];
+    drawNext(); return createPiece(type);
+  }
+
+  function resetGame() {
+    board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+    score = 0; lines = 0; level = 1; dropInterval = 800;
+    gameOver = false; paused = false; started = true;
+    nextType = null;
+    current = randomPiece();
+    updateStats(); initStars();
+    overlay.classList.add('hidden');
+    if (dropTimer) clearInterval(dropTimer);
+    dropTimer = setInterval(tick, dropInterval);
+    draw();
+  }
+
+  function updateStats() {
+    scoreEl.textContent = score;
+    levelEl.textContent = level;
+    linesEl.textContent = lines;
+  }
+
+  function rotate(m) {
+    return m.map((_,i) => m.map(r => r[i]).reverse());
+  }
+  function isValid(p, dx, dy, ns) {
+    const s = ns || p.shape;
+    for (let y=0; y<s.length; y++) for (let x=0; x<s[y].length; x++) if (s[y][x]) {
+      const nx=p.x+x+dx, ny=p.y+y+dy;
+      if (nx<0 || nx>=COLS || ny>=ROWS) return false;
+      if (ny>=0 && board[ny][nx]) return false;
+    }
+    return true;
+  }
+
+  function lockPiece() {
+    current.shape.forEach((row,y) => row.forEach((val,x) => {
+      if (val) { const ny=current.y+y; if (ny<0) gameOver=true; else board[ny][current.x+x]=current.type; }
+    }));
+    if (gameOver) { endGame(); return; }
+    clearLines(); current = randomPiece();
+  }
+
+  function clearLines() {
+    let cleared=0;
+    for (let y=ROWS-1; y>=0; y--) {
+      if (board[y].every(c=>c!==0)) { board.splice(y,1); board.unshift(Array(COLS).fill(0)); cleared++; y++; }
+    }
+    if (cleared>0) {
+      lines+=cleared; score+=[0,100,300,500,800][cleared]*level;
+      level=Math.floor(lines/10)+1;
+      dropInterval=Math.max(100, 800-(level-1)*70);
+      clearInterval(dropTimer); dropTimer=setInterval(tick, dropInterval);
+      updateStats();
+    }
+  }
+
+  function tick() { if (paused||gameOver||!started) return; if (isValid(current,0,1)) current.y++; else lockPiece(); draw(); }
+  function move(dx) { if (paused||gameOver||!started) return; if (isValid(current,dx,0)) { current.x+=dx; draw(); } }
+  function rotatePiece() { if (paused||gameOver||!started) return; const r=rotate(current.shape); if (isValid(current,0,0,r)) current.shape=r; else for (const k of [-1,1,-2,2]) if (isValid(current,k,0,r)) { current.x+=k; current.shape=r; break; } draw(); }
+  function hardDrop() { if (paused||gameOver||!started) return; while(isValid(current,0,1)) current.y++; lockPiece(); draw(); }
+  function togglePause() { if (gameOver||!started) return; paused=!paused; if (paused) { overlaySub.textContent='Нажми P или кнопку, чтобы продолжить'; startBtn.textContent='Продолжить'; overlay.classList.remove('hidden'); } else { overlay.classList.add('hidden'); } }
+
+  function endGame() {
+    clearInterval(dropTimer);
+    const isRecord = leaderboard.length < 5 || score > (leaderboard.sort((a,b)=>b.score-a.score)[4]?.score || 0);
+    if (score > 0) {
+      leaderboard.push({ name: playerName, score, date: new Date().toLocaleDateString('ru-RU') });
+      saveLeaderboard(); renderLeaderboard();
+    }
+    overlaySub.innerHTML = isRecord && score > 0 
+      ? `🎉 Новый рекорд! <b>${score}</b> очков` 
+      : `Счёт: <b>${score}</b>`;
+    startBtn.textContent = 'Новая игра';
+    if (isRecord && score > 0) {
+      const shareBtn = document.createElement('button');
+      shareBtn.className = 'vk-btn vk-btn-secondary';
+      shareBtn.textContent = 'Поделиться';
+      shareBtn.onclick = () => {
+        const text = `Я набрал ${score} очков в КосмоТетрисе! Попробуй побить мой рекорд 🚀`;
+        if (navigator.share) { navigator.share({ title: 'КосмоТетрис', text }); }
+        else { alert(text); }
+      };
+      if (!overlay.querySelector('.vk-btn-secondary')) {
+        overlay.insertBefore(shareBtn, startBtn.nextSibling);
+      }
+    }
+    overlay.classList.remove('hidden');
+  }
+
+  function drawBlock(x,y,color,glow,context=ctx) {
+    const px=x*BLOCK, py=y*BLOCK;
+    context.fillStyle=color;
+    context.fillRect(px+1, py+1, BLOCK-2, BLOCK-2);
+    if (glow) {
+      context.shadowColor=color; context.shadowBlur=6;
+      context.strokeRect(px+2, py+2, BLOCK-4, BLOCK-4);
+      context.shadowBlur=0;
+    }
+    context.fillStyle='rgba(255,255,255,0.25)';
+    context.fillRect(px+2, py+2, BLOCK-4, 3);
+    context.fillStyle='rgba(0,0,0,0.3)';
+    context.fillRect(px+2, py+BLOCK-5, BLOCK-4, 3);
+  }
+
+  function drawGhost() {
+    let gy=current.y;
+    while(isValid(current,0,gy-current.y+1)) gy++;
+    ctx.globalAlpha=0.2;
+    current.shape.forEach((row,y)=>row.forEach((val,x)=>{ if(val) drawBlock(current.x+x,gy+y,COLORS[current.type],false); }));
+    ctx.globalAlpha=1;
+  }
+
+  function drawNext() {
+    nextCtx.fillStyle='#0a0a1a';
+    nextCtx.fillRect(0,0,nextCanvas.width,nextCanvas.height);
+    if (!nextType) return;
+    const shape=SHAPES[nextType];
+    const bs=16;
+    const offX=(nextCanvas.width-shape[0].length*bs)/2;
+    const offY=(nextCanvas.height-shape.length*bs)/2;
+    shape.forEach((row,y)=>row.forEach((val,x)=>{
+      if(val) {
+        const px=offX+x*bs, py=offY+y*bs;
+        nextCtx.fillStyle=COLORS[nextType];
+        nextCtx.fillRect(px+1,py+1,bs-2,bs-2);
+        nextCtx.fillStyle='rgba(255,255,255,0.25)';
+        nextCtx.fillRect(px+2,py+2,bs-4,2);
+      }
+    }));
+  }
+
+  function draw() {
+    ctx.fillStyle='#0a0a1a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    stars.forEach(s=>{ s.alpha+=s.speed; if(s.alpha>1||s.alpha<0)s.speed*=-1; const a=Math.abs(s.alpha); ctx.fillStyle=`rgba(255,255,255,${a*0.8})`; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); });
+    ctx.strokeStyle='rgba(255,255,255,0.03)'; ctx.lineWidth=1;
+    for(let x=0;x<=COLS;x++){ctx.beginPath();ctx.moveTo(x*BLOCK,0);ctx.lineTo(x*BLOCK,canvas.height);ctx.stroke();}
+    for(let y=0;y<=ROWS;y++){ctx.beginPath();ctx.moveTo(0,y*BLOCK);ctx.lineTo(canvas.width,y*BLOCK);ctx.stroke();}
+    board.forEach((row,y)=>row.forEach((val,x)=>{ if(val) drawBlock(x,y,COLORS[val],true); }));
+    if (current) { drawGhost(); current.shape.forEach((row,y)=>row.forEach((val,x)=>{ if(val) drawBlock(current.x+x,current.y+y,COLORS[current.type],true); })); }
+  }
+
+  document.addEventListener('keydown',e=>{
+    if (e.key==='ArrowLeft'){e.preventDefault();move(-1);}
+    else if (e.key==='ArrowRight'){e.preventDefault();move(1);}
+    else if (e.key==='ArrowUp'){e.preventDefault();rotatePiece();}
+    else if (e.key==='ArrowDown'){e.preventDefault();if(isValid(current,0,1)){current.y++;score+=1;updateStats();}draw();}
+    else if (e.key===' '){e.preventDefault();hardDrop();}
+    else if (e.key==='p'||e.key==='P'){e.preventDefault();togglePause();}
+  });
+
+  document.querySelectorAll('.vk-key').forEach(btn=>{
+    if(btn.classList.contains('empty'))return;
+    btn.addEventListener('click',e=>{e.preventDefault();const k=btn.dataset.key;
+      if(k==='ArrowLeft')move(-1);else if(k==='ArrowRight')move(1);else if(k==='ArrowUp')rotatePiece();
+      else if(k==='ArrowDown'){if(isValid(current,0,1)){current.y++;score+=1;updateStats();}draw();}
+      else if(k==='Space')hardDrop();
+    });
+  });
+
+  startBtn.addEventListener('click',()=>{
+    const name = playerNameInput.value.trim();
+    if (name) playerName = name;
+    if (paused && started) { togglePause(); }
+    else { 
+      const oldShare = overlay.querySelector('.vk-btn-secondary');
+      if (oldShare) oldShare.remove();
+      resetGame(); 
+    }
+  });
+
+  initStars(); drawNext(); draw();
+})();
+</script>
+
+</body>
+</html>
