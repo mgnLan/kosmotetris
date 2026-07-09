@@ -369,6 +369,37 @@
         I: '#00e5ff', O: '#ffd600', T: '#b967ff', S: '#00ff9f', Z: '#ff3366', J: '#00b0ff', L: '#ff7043'
       }, bg: '#08080f', star: 'rgba(255,255,255,0.7)', glow: true, owned: true
     },
+    ice: {
+      name: 'Ледяной', price: 25, colors: {
+        I: '#b3e5fc', O: '#81d4fa', T: '#4fc3f7', S: '#29b6f6', Z: '#039be5', J: '#0288d1', L: '#0277bd'
+      }, bg: '#0a1628', star: 'rgba(179,229,252,0.5)', glow: true, owned: false
+    },
+    magma: {
+      name: 'Магма', price: 50, colors: {
+        I: '#ff8a65', O: '#ff7043', T: '#ff5722', S: '#f4511e', Z: '#e64a19', J: '#d84315', L: '#bf360c'
+      }, bg: '#1a0a05', star: 'rgba(255,138,101,0.4)', glow: true, owned: false
+    },
+    orion: {
+      name: 'Туманность Ориона', price: 100, colors: {
+        I: '#e8d5ff', O: '#c9a8ff', T: '#a675e0', S: '#8a5cf5', Z: '#6d48c5', J: '#5533a0', L: '#3d2077'
+      }, bg: '#120b1e', star: 'rgba(200,170,255,0.5)', glow: true, owned: false
+    },
+    golden: {
+      name: 'Золотой', price: 250, colors: {
+        I: '#fff9c4', O: '#fff59d', T: '#fff176', S: '#ffee58', Z: '#fdd835', J: '#fbc02d', L: '#f9a825'
+      }, bg: '#1a1400', star: 'rgba(255,249,196,0.5)', glow: true, owned: false
+    },
+    cyberpunk: {
+      name: 'Киберпанк', price: 500, colors: {
+        I: '#00f5ff', O: '#ff00ff', T: '#39ff14', S: '#ff3131', Z: '#bc13fe', J: '#fe019a', L: '#00ff9f'
+      }, bg: '#0a0014', star: 'rgba(0,245,255,0.4)', glow: true, owned: false
+    }
+  };
+    default: {
+      name: 'Стандарт', price: 0, colors: {
+        I: '#00e5ff', O: '#ffd600', T: '#b967ff', S: '#00ff9f', Z: '#ff3366', J: '#00b0ff', L: '#ff7043'
+      }, bg: '#08080f', star: 'rgba(255,255,255,0.7)', glow: true, owned: true
+    },
     orion: {
       name: 'Туманность Ориона', price: 50, colors: {
         I: '#e8d5ff', O: '#c9a8ff', T: '#a675e0', S: '#8a5cf5', Z: '#6d48c5', J: '#5533a0', L: '#3d2077'
@@ -404,6 +435,24 @@
   }
 
   function renderSkinShop() {
+    const shop = document.getElementById('vk-skin-shop');
+    shop.innerHTML = Object.entries(SKINS).map(([key, skin]) => {
+      const isActive = currentSkin === key;
+      const canBuy = skin.owned || stars >= skin.price;
+      const rarityColor = skin.price === 0 ? '#8b8f9e' : skin.price <= 25 ? '#81d4fa' : skin.price <= 50 ? '#81c784' : skin.price <= 100 ? '#ffb74d' : skin.price <= 250 ? '#ffd54f' : '#e040fb';
+      const rarityName = skin.price === 0 ? 'Базовый' : skin.price <= 25 ? 'Обычный' : skin.price <= 50 ? 'Редкий' : skin.price <= 100 ? 'Эпический' : skin.price <= 250 ? 'Легендарный' : 'Мифический';
+      const status = skin.owned ? (isActive ? '✅ Активен' : 'Надеть') : `${skin.price} ⭐`;
+      const lockedClass = !skin.owned && !canBuy ? 'opacity:0.45;filter:grayscale(0.7);' : '';
+      return `<div class="vk-skin-item ${isActive ? 'active' : ''}" onclick="window._buySkin('${key}')" style="${lockedClass}">
+        <div class="vk-skin-preview" style="background:${skin.colors.I || skin.colors[0]};box-shadow:0 0 8px ${skin.colors.I}"></div>
+        <div class="vk-skin-info">
+          <div class="vk-skin-name">${skin.name}</div>
+          <div style="font-size:10px;color:${rarityColor};font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${rarityName}</div>
+          <div class="vk-skin-${skin.owned ? 'lock' : 'price'}">${status}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
     const shop = document.getElementById('vk-skin-shop');
     shop.innerHTML = Object.entries(SKINS).map(([key, skin]) => {
       const isActive = currentSkin === key;
