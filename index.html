@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>КосмоТетрис</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   :root {
     --bg-body: #0b0c15; --bg-card: rgba(255,255,255,0.04); --border-card: rgba(255,255,255,0.06);
     --text-primary: #f0f1f5; --text-secondary: #8b8f9e; --accent: #00d4ff; --accent-secondary: #7b2ff7;
@@ -20,37 +20,39 @@
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     background: radial-gradient(ellipse at 50% 0%, #161825 0%, #0b0c15 60%, #06070a 100%);
-    display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 16px;
+    display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 10px 10px 0;
     color: var(--text-primary); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   }
-  .vk-tetris { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 8px; max-width: 520px; width: 100%; user-select: none; -webkit-user-select: none; }
-  .vk-header { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 20px; box-shadow: var(--shadow-card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); }
+  .vk-tetris { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px; max-width: 520px; width: 100%; user-select: none; -webkit-user-select: none; padding-bottom: 160px; }
+  .vk-header { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 16px; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 18px; box-shadow: var(--shadow-card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); }
   .vk-header-left { display: flex; align-items: center; gap: 12px; }
   .vk-avatar { width: 40px; height: 40px; border-radius: 14px; background: linear-gradient(135deg, var(--accent), var(--accent-secondary)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: 600; overflow: hidden; object-fit: cover; box-shadow: 0 0 16px rgba(0,212,255,0.25), 0 4px 12px rgba(123,47,247,0.2); }
   .vk-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .vk-title { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
-  .vk-header-right { display: flex; align-items: center; gap: 14px; }
-  .vk-sound-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-secondary); padding: 6px; border-radius: 12px; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); }
-  .vk-sound-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); transform: scale(1.08); }
+  .vk-header-right { display: flex; align-items: center; gap: 10px; }
+  .vk-header-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-secondary); padding: 6px; border-radius: 12px; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+  .vk-header-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); transform: scale(1.08); }
   .vk-score-box { text-align: right; }
   .vk-score-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
   .vk-score-value { font-size: 22px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; text-shadow: 0 0 20px rgba(0,212,255,0.35); }
-  .vk-main { display: flex; gap: 16px; width: 100%; justify-content: center; flex-wrap: wrap; }
+  .vk-main { display: flex; gap: 14px; width: 100%; justify-content: center; flex-wrap: wrap; }
   .vk-board-wrap { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); background: var(--bg-board); box-shadow: 0 0 40px rgba(0,212,255,0.06), 0 12px 48px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04); }
-  .vk-canvas { display: block; }
-  .vk-sidebar { display: flex; flex-direction: column; gap: 12px; min-width: 130px; flex: 1; max-width: 170px; }
-  .vk-card { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow-card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .vk-canvas { display: block; touch-action: none; }
+  .vk-sidebar { display: flex; flex-direction: column; gap: 10px; min-width: 130px; flex: 1; max-width: 170px; max-height: 360px; overflow-y: auto; }
+  .vk-sidebar::-webkit-scrollbar { width: 4px; }
+  .vk-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  .vk-card { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 16px; padding: 12px; box-shadow: var(--shadow-card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); transition: transform 0.2s ease, box-shadow 0.2s ease; flex-shrink: 0; }
   .vk-card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
-  .vk-card-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; }
+  .vk-card-title { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
   .vk-next-canvas { display: block; margin: 0 auto; border-radius: 10px; background: var(--bg-board); box-shadow: inset 0 0 12px rgba(0,0,0,0.4); }
-  .vk-stat-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 6px; }
+  .vk-stat-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
   .vk-stat-label { color: var(--text-secondary); font-weight: 500; }
   .vk-stat-value { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
   .vk-stars-box { display: flex; align-items: center; gap: 5px; font-size: 15px; font-weight: 700; color: #ffd54f; text-shadow: 0 0 12px rgba(255,213,79,0.4); }
   .vk-leader-list { list-style: none; padding: 0; margin: 0; }
-  .vk-leader-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; }
+  .vk-leader-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.15s; }
   .vk-leader-item:last-child { border-bottom: none; }
-  .vk-leader-item:hover { background: rgba(255,255,255,0.02); margin: 0 -8px; padding: 6px 8px; border-radius: 8px; }
+  .vk-leader-item:hover { background: rgba(255,255,255,0.02); margin: 0 -6px; padding: 5px 6px; border-radius: 8px; }
   .vk-leader-rank { width: 20px; text-align: center; font-weight: 700; color: var(--text-secondary); font-size: 12px; }
   .vk-leader-rank.gold { color: #ffd54f; text-shadow: 0 0 10px rgba(255,213,79,0.5); }
   .vk-leader-rank.silver { color: #b0b8c8; }
@@ -75,7 +77,14 @@
   .vk-btn-gold { background: linear-gradient(135deg, #ffb347 0%, #ffcc33 100%); color: #1a1a1a; box-shadow: 0 0 20px rgba(255,179,71,0.35), 0 4px 12px rgba(255,204,51,0.2); }
   .vk-btn-gold::before { background: linear-gradient(135deg, #ffc266 0%, #ffe066 100%); }
   .vk-btn-gold:hover { box-shadow: 0 0 28px rgba(255,179,71,0.5), 0 6px 16px rgba(255,204,51,0.3); transform: translateY(-1px) scale(1.02); }
-  .vk-controls { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 64px); gap: 10px; justify-content: center; margin-top: 8px; }
+  .vk-controls {
+    display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 64px); gap: 10px;
+    justify-content: center; margin: 0;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(11,12,21,0.85); border-top: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    padding: 10px 0 16px;
+  }
   .vk-key { width: 64px; height: 64px; border-radius: 18px; border: 1px solid rgba(255,255,255,0.08); background: var(--bg-key); color: var(--text-key); font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s cubic-bezier(0.4,0,0.2,1); font-family: inherit; backdrop-filter: blur(8px); -webkit-tap-highlight-color: transparent; }
   .vk-key:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); border-color: rgba(255,255,255,0.15); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
   .vk-key:active { background: rgba(255,255,255,0.15); color: var(--accent); transform: scale(0.92); box-shadow: 0 0 16px rgba(0,212,255,0.2); border-color: rgba(0,212,255,0.3); }
@@ -98,8 +107,29 @@
   .vk-skin-lock { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
   .vk-reward-box { display: flex; flex-direction: column; gap: 10px; align-items: center; }
   .vk-reward-text { font-size: 14px; color: rgba(255,255,255,0.7); text-align: center; font-weight: 500; }
-  @media (max-width: 440px) { .vk-sidebar { flex-direction: row; max-width: 100%; flex-wrap: wrap; gap: 10px; } .vk-card { flex: 1; min-width: 110px; padding: 12px; } .vk-controls { grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(2, 60px); gap: 8px; } .vk-key { width: 60px; height: 60px; border-radius: 16px; font-size: 20px; } .vk-drop-btn { height: 48px; font-size: 14px; border-radius: 16px; } .vk-title { font-size: 15px; } .vk-score-value { font-size: 20px; } body { padding: 10px; } .vk-tetris { gap: 12px; } }
-  @media (max-width: 360px) { .vk-controls { grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(2, 54px); gap: 6px; } .vk-key { width: 54px; height: 54px; border-radius: 14px; font-size: 18px; } .vk-drop-btn { height: 44px; font-size: 13px; } }
+  .vk-combo {
+    position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+    font-size: 28px; font-weight: 800; color: #fff; pointer-events: none; opacity: 0; z-index: 5;
+    text-shadow: 0 0 24px rgba(0,212,255,0.6), 0 0 48px rgba(123,47,247,0.4);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); white-space: nowrap; letter-spacing: 1px;
+  }
+  .vk-combo.show { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+  .vk-combo.tetris { color: #ffd54f; text-shadow: 0 0 24px rgba(255,213,79,0.6), 0 0 48px rgba(255,179,71,0.4); }
+  @media (max-width: 440px) {
+    .vk-sidebar { flex-direction: row; max-width: 100%; flex-wrap: wrap; gap: 10px; max-height: none; }
+    .vk-card { flex: 1; min-width: 110px; padding: 10px; }
+    .vk-controls { grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(2, 60px); gap: 8px; }
+    .vk-key { width: 60px; height: 60px; border-radius: 16px; font-size: 20px; }
+    .vk-drop-btn { height: 48px; font-size: 14px; border-radius: 16px; }
+    .vk-title { font-size: 15px; } .vk-score-value { font-size: 20px; }
+    body { padding: 8px 8px 0; } .vk-tetris { gap: 10px; padding-bottom: 150px; }
+    .vk-combo { font-size: 22px; }
+  }
+  @media (max-width: 360px) {
+    .vk-controls { grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(2, 54px); gap: 6px; }
+    .vk-key { width: 54px; height: 54px; border-radius: 14px; font-size: 18px; }
+    .vk-drop-btn { height: 44px; font-size: 13px; }
+  }
 </style>
 </head>
 <body>
@@ -110,7 +140,9 @@
       <div class="vk-title">КосмоТетрис</div>
     </div>
     <div class="vk-header-right">
-      <button class="vk-sound-btn" id="vk-sound-btn" title="Звук">🔊</button>
+      <button class="vk-header-btn" id="vk-hold-btn" title="Удержать (H)">⇅</button>
+      <button class="vk-header-btn" id="vk-pause-btn" title="Пауза (P)">⏸</button>
+      <button class="vk-header-btn" id="vk-sound-btn" title="Звук (M)">🔊</button>
       <div class="vk-score-box">
         <div class="vk-score-label">Счёт</div>
         <div class="vk-score-value" id="vk-score">0</div>
@@ -119,7 +151,8 @@
   </div>
   <div class="vk-main">
     <div class="vk-board-wrap">
-      <canvas id="vk-board" class="vk-canvas" width="220" height="440"></canvas>
+      <canvas id="vk-board" class="vk-canvas" width="200" height="360"></canvas>
+      <div class="vk-combo" id="vk-combo"></div>
       <div class="vk-overlay" id="vk-overlay">
         <div class="vk-overlay-title">КосмоТетрис</div>
         <div class="vk-overlay-sub" id="vk-overlay-sub">Собери линии среди звёзд</div>
@@ -133,6 +166,7 @@
     </div>
     <div class="vk-sidebar">
       <div class="vk-card"><div class="vk-card-title">Следующая</div><canvas id="vk-next" class="vk-next-canvas" width="80" height="80"></canvas></div>
+      <div class="vk-card"><div class="vk-card-title">Удержать (H)</div><canvas id="vk-hold" class="vk-next-canvas" width="80" height="80"></canvas></div>
       <div class="vk-card">
         <div class="vk-card-title">Статистика</div>
         <div class="vk-stat-row"><span class="vk-stat-label">Уровень</span><span class="vk-stat-value" id="vk-level">1</span></div>
@@ -143,12 +177,12 @@
       <div class="vk-card"><div class="vk-card-title">🎨 Скины</div><div class="vk-skin-shop" id="vk-skin-shop"></div></div>
     </div>
   </div>
-  <div class="vk-controls">
+  <div class="vk-controls" id="vk-controls">
     <button class="vk-key empty"></button><button class="vk-key" data-key="ArrowUp">↻</button><button class="vk-key empty"></button>
     <button class="vk-key" data-key="ArrowLeft">←</button><button class="vk-key" data-key="ArrowDown">↓</button><button class="vk-key" data-key="ArrowRight">→</button>
-    <button class="vk-key vk-drop-btn" data-key="Space">⬇ Ускорить</button>
+    <button class="vk-key vk-drop-btn" data-key="Space">↓↓ Сбросить</button>
   </div>
-  <div class="vk-hint">Пробел — сброс · P — пауза · M — звук</div>
+  <div class="vk-hint">Пробел — сброс · P — пауза · M — звук · H — удержать</div>
 </div>
 
 <script src="https://unpkg.com/@vkontakte/vk-bridge@2.14.0/dist/browser.min.js"></script>
@@ -214,14 +248,15 @@
       case 'drop': playTone(100, 0.08, 'sawtooth', 0.08); break;
       case 'gameover': [400, 350, 300, 250].forEach((f, i) => setTimeout(() => playTone(f, 0.3, 'sawtooth', 0.1), i * 150)); break;
       case 'pause': playTone(330, 0.15, 'sine', 0.06); break;
+      case 'hold': playTone(550, 0.1, 'sine', 0.07); break;
     }
   }
 
   // ===== BACKGROUND MUSIC =====
   function startBgMusic() {
     if (!audioCtx || !soundEnabled || bgMusicOsc) return;
-    const rootNote = 55; // A1
-    const scale = [0, 3, 5, 7, 10]; // minor pentatonic intervals
+    const rootNote = 55;
+    const scale = [0, 3, 5, 7, 10];
     let noteIndex = 0;
 
     function playBgNote() {
@@ -267,12 +302,28 @@
   }
 
   document.getElementById('vk-sound-btn').addEventListener('click', toggleSound);
+  document.getElementById('vk-pause-btn').addEventListener('click', () => { if (started && !gameOver) togglePause(); });
+  document.getElementById('vk-hold-btn').addEventListener('click', () => { if (started && !gameOver && !paused) holdPiece(); });
 
   // ===== STARS ECONOMY =====
   let stars = parseInt(localStorage.getItem('vk_tetris_stars') || '0');
   function updateStars() { document.getElementById('vk-stars').textContent = stars; localStorage.setItem('vk_tetris_stars', stars); }
   function addStars(amount) { stars += amount; updateStars(); }
   updateStars();
+
+  // First game bonus
+  if (!localStorage.getItem('vk_tetris_first_bonus')) {
+    addStars(5);
+    localStorage.setItem('vk_tetris_first_bonus', '1');
+  }
+
+  // Daily bonus
+  const today = new Date().toISOString().split('T')[0];
+  const lastVisit = localStorage.getItem('vk_tetris_last_visit');
+  if (lastVisit !== today) {
+    addStars(10);
+    localStorage.setItem('vk_tetris_last_visit', today);
+  }
 
   // ===== SKIN SYSTEM =====
   const SKINS = {
@@ -290,7 +341,7 @@
   function applySkin(skinKey) {
     const skin = SKINS[skinKey]; if (!skin) return;
     currentSkin = skinKey; localStorage.setItem('vk_tetris_skin', skinKey);
-    COLORS = skin.colors; renderSkinShop(); draw();
+    COLORS = skin.colors; renderSkinShop(); drawHold(); drawNext(); draw();
   }
   function buySkin(skinKey) {
     const skin = SKINS[skinKey]; if (!skin || skin.owned || stars < skin.price) return;
@@ -331,6 +382,14 @@
   // ===== LEADERBOARD =====
   let leaderboard = [];
   try { const saved = localStorage.getItem('vk_tetris_lb'); if (saved) leaderboard = JSON.parse(saved); } catch(e) {}
+  if (leaderboard.length === 0) {
+    leaderboard = [
+      { name: 'Космонавт', score: 2500, date: '—', avatar: null },
+      { name: 'Звёздочёт', score: 1800, date: '—', avatar: null },
+      { name: 'Новобранец', score: 900, date: '—', avatar: null }
+    ];
+    saveLeaderboard();
+  }
   function saveLeaderboard() { try { localStorage.setItem('vk_tetris_lb', JSON.stringify(leaderboard)); } catch(e) {} }
   function renderLeaderboard() {
     const sorted = leaderboard.sort((a,b) => b.score - a.score).slice(0, 5);
@@ -349,6 +408,8 @@
   const ctx = canvas.getContext('2d');
   const nextCanvas = document.getElementById('vk-next');
   const nextCtx = nextCanvas.getContext('2d');
+  const holdCanvas = document.getElementById('vk-hold');
+  const holdCtx = holdCanvas.getContext('2d');
   const overlay = document.getElementById('vk-overlay');
   const overlaySub = document.getElementById('vk-overlay-sub');
   const startBtn = document.getElementById('vk-start-btn');
@@ -357,8 +418,9 @@
   const levelEl = document.getElementById('vk-level');
   const linesEl = document.getElementById('vk-lines');
   const rewardBox = document.getElementById('vk-reward-box');
+  const comboEl = document.getElementById('vk-combo');
 
-  const COLS = 10, ROWS = 20, BLOCK = 22;
+  const COLS = 10, ROWS = 18, BLOCK = 20;
   canvas.width = COLS * BLOCK; canvas.height = ROWS * BLOCK;
 
   let COLORS = { ...SKINS[currentSkin].colors };
@@ -369,15 +431,16 @@
   };
   const PIECE_KEYS = Object.keys(SHAPES);
 
-  let board = [], current = null, nextType = null;
+  let board = [], current = null, nextType = null, holdType = null, holdUsed = false;
   let score = 0, lines = 0, level = 1;
   let dropTimer = null, dropInterval = 800;
   let gameOver = false, paused = false, started = false;
   let bgStars = [];
   let playerName = 'Аноним';
+  let comboCount = 0;
 
   // ===== LINE CLEAR ANIMATION =====
-  let clearAnim = { active: false, rows: [], frame: 0, particles: [] };
+  let clearAnim = { active: false, rows: [], flashPhase: 0, particles: [] };
 
   function initStars() {
     bgStars = [];
@@ -400,9 +463,11 @@
     board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
     score = 0; lines = 0; level = 1; dropInterval = 800;
     gameOver = false; paused = false; started = true;
-    nextType = null; clearAnim = { active: false, rows: [], frame: 0, particles: [] };
+    nextType = null; holdType = null; holdUsed = false;
+    clearAnim = { active: false, rows: [], flashPhase: 0, particles: [] };
+    comboCount = 0;
     current = randomPiece();
-    updateStats(); initStars();
+    updateStats(); initStars(); drawHold();
     overlay.classList.add('hidden'); rewardBox.style.display = 'none';
     if (dropTimer) clearInterval(dropTimer);
     dropTimer = setInterval(tick, dropInterval);
@@ -426,7 +491,23 @@
       if (val) { const ny=current.y+y; if (ny<0) gameOver=true; else board[ny][current.x+x]=current.type; }
     }));
     if (gameOver) { endGame(); return; }
-    playSFX('lock'); clearLines(); current = randomPiece();
+    playSFX('lock'); clearLines(); holdUsed = false; current = randomPiece();
+  }
+
+  function holdPiece() {
+    if (!started || gameOver || paused || clearAnim.active || !current) return;
+    if (holdUsed) return;
+    playSFX('hold');
+    if (!holdType) {
+      holdType = current.type;
+      current = randomPiece();
+    } else {
+      const tmp = current.type;
+      current = createPiece(holdType);
+      holdType = tmp;
+    }
+    holdUsed = true;
+    drawHold(); draw();
   }
 
   function spawnClearParticles(rows) {
@@ -444,40 +525,59 @@
     });
   }
 
+  function showComboText(cleared) {
+    const texts = { 2: 'Double!', 3: 'Triple!', 4: 'TETRIS!' };
+    const text = texts[cleared];
+    if (!text) return;
+    comboEl.textContent = text;
+    comboEl.className = 'vk-combo show' + (cleared === 4 ? ' tetris' : '');
+    setTimeout(() => { comboEl.className = 'vk-combo'; }, 1400);
+  }
+
   function clearLines() {
     let clearedRows = [];
     for (let y=ROWS-1; y>=0; y--) {
       if (board[y].every(c=>c!==0)) { clearedRows.push(y); }
     }
-    if (clearedRows.length === 0) return;
+    if (clearedRows.length === 0) { comboCount = 0; return; }
 
     // Start animation
     clearAnim.active = true;
     clearAnim.rows = [...clearedRows];
-    clearAnim.frame = 0;
+    clearAnim.flashPhase = 0;
+    clearAnim.particles = [];
     spawnClearParticles(clearedRows);
 
-    // Remove lines after flash
-    setTimeout(() => {
-      clearedRows.sort((a,b) => a-b).forEach(rowY => {
-        board.splice(rowY, 1); board.unshift(Array(COLS).fill(0));
-      });
-      const cleared = clearedRows.length;
-      lines += cleared; score += [0,100,300,500,800][cleared] * level;
-      level = Math.floor(lines/10) + 1;
-      dropInterval = Math.max(100, 800 - (level-1)*70);
-      clearInterval(dropTimer); dropTimer = setInterval(tick, dropInterval);
-      updateStats(); addStars(cleared);
-      playSFX(cleared === 4 ? 'tetris' : 'clear');
-      clearAnim.active = false;
-    }, 400);
+    let flashStep = 0;
+    const flashInterval = setInterval(() => {
+      flashStep++;
+      clearAnim.flashPhase = flashStep;
+      draw();
+      if (flashStep >= 6) {
+        clearInterval(flashInterval);
+        clearedRows.sort((a,b) => a-b).forEach(rowY => {
+          board.splice(rowY, 1); board.unshift(Array(COLS).fill(0));
+        });
+        const cleared = clearedRows.length;
+        comboCount++;
+        lines += cleared; score += [0,100,300,500,800][cleared] * level;
+        if (cleared >= 2) showComboText(cleared);
+        level = Math.floor(lines/10) + 1;
+        dropInterval = Math.max(100, 800 - (level-1)*70);
+        clearInterval(dropTimer); dropTimer = setInterval(tick, dropInterval);
+        updateStats(); addStars(cleared);
+        playSFX(cleared === 4 ? 'tetris' : 'clear');
+        clearAnim.active = false;
+      }
+    }, 150);
   }
 
   function tick() { if (paused||gameOver||!started||clearAnim.active) return; if (isValid(current,0,1)) current.y++; else lockPiece(); draw(); }
   function move(dx) { if (paused||gameOver||!started||clearAnim.active) return; if (isValid(current,dx,0)) { current.x+=dx; playSFX('move'); draw(); } }
   function rotatePiece() { if (paused||gameOver||!started||clearAnim.active) return; const r=rotate(current.shape); if (isValid(current,0,0,r)) current.shape=r; else for (const k of [-1,1,-2,2]) if (isValid(current,k,0,r)) { current.x+=k; current.shape=r; break; } playSFX('rotate'); draw(); }
-  function hardDrop() { if (paused||gameOver||!started||clearAnim.active) return; playSFX('drop'); while(isValid(current,0,1)) current.y++; lockPiece(); draw(); }
-  function togglePause() { if (gameOver||!started) return; paused=!paused; playSFX('pause'); if (paused) { stopBgMusic(); overlaySub.textContent='Нажми P или кнопку, чтобы продолжить'; startBtn.textContent='Продолжить'; overlay.classList.remove('hidden'); } else { startBgMusic(); overlay.classList.add('hidden'); } }
+  function softDrop() { if (paused||gameOver||!started||clearAnim.active) return; if (isValid(current,0,1)) { current.y++; score+=1; updateStats(); playSFX('move'); } draw(); }
+  function hardDrop() { if (paused||gameOver||!started||clearAnim.active) return; playSFX('drop'); let dropped = 0; while(isValid(current,0,1)) { current.y++; dropped++; } score += dropped * 2; updateStats(); lockPiece(); draw(); }
+  function togglePause() { if (gameOver||!started) return; paused=!paused; playSFX('pause'); if (paused) { stopBgMusic(); overlaySub.textContent='Нажми P, ⏸ или кнопку, чтобы продолжить'; startBtn.textContent='Продолжить'; overlay.classList.remove('hidden'); } else { startBgMusic(); overlay.classList.add('hidden'); } }
 
   async function shareScore() {
     const text = `Я набрал ${score} очков в КосмоТетрисе! Попробуй побить мой рекорд 🚀`;
@@ -502,6 +602,7 @@
 
   function drawBlock(x,y,color,glow,context,flash) {
     const px=x*BLOCK, py=y*BLOCK; const size=BLOCK-2; const r=3;
+    if (py < 0 || py >= canvas.height) return;
     const path=new Path2D();
     path.moveTo(px+1+r, py+1); path.lineTo(px+1+size-r, py+1);
     path.arcTo(px+1+size, py+1, px+1+size, py+1+r, r);
@@ -532,8 +633,10 @@
   function drawGhost() {
     let gy=current.y;
     while(isValid(current,0,gy-current.y+1)) gy++;
-    ctx.globalAlpha=0.2;
-    current.shape.forEach((row,y)=>row.forEach((val,x)=>{ if(val) drawBlock(current.x+x,gy+y,COLORS[current.type],false); }));
+    ctx.globalAlpha=0.18;
+    current.shape.forEach((row,y)=>row.forEach((val,x)=>{
+      if(val && gy+y >= 0) drawBlock(current.x+x,gy+y,COLORS[current.type],false,ctx);
+    }));
     ctx.globalAlpha=1;
   }
 
@@ -558,6 +661,27 @@
     }}));
   }
 
+  function drawHold() {
+    holdCtx.fillStyle=SKINS[currentSkin].bg; holdCtx.fillRect(0,0,holdCanvas.width,holdCanvas.height);
+    if (!holdType) return;
+    const shape=SHAPES[holdType]; const bs=16;
+    const offX=(holdCanvas.width-shape[0].length*bs)/2; const offY=(holdCanvas.height-shape.length*bs)/2;
+    shape.forEach((row,y)=>row.forEach((val,x)=>{ if(val) {
+      const px=offX+x*bs, py=offY+y*bs; const r=2;
+      const path=new Path2D();
+      path.moveTo(px+1+r, py+1); path.lineTo(px+1+bs-2-r, py+1); path.arcTo(px+1+bs-2, py+1, px+1+bs-2, py+1+r, r);
+      path.lineTo(px+1+bs-2, py+1+bs-2-r); path.arcTo(px+1+bs-2, py+1+bs-2, px+1+bs-2-r, py+1+bs-2, r);
+      path.lineTo(px+1+r, py+1+bs-2); path.arcTo(px+1, py+1+bs-2, px+1, py+1+bs-2-r, r);
+      path.lineTo(px+1, py+1+r); path.arcTo(px+1, py+1, px+1+r, py+1, r); path.closePath();
+      const grad=holdCtx.createLinearGradient(px+1, py+1, px+1, py+1+bs-2);
+      grad.addColorStop(0, COLORS[holdType]); grad.addColorStop(1, adjustColor(COLORS[holdType], -20));
+      holdCtx.fillStyle=grad; holdCtx.fill(path); holdCtx.strokeStyle='rgba(255,255,255,0.15)'; holdCtx.lineWidth=0.5; holdCtx.stroke(path);
+      const hGrad=holdCtx.createLinearGradient(px+1, py+1, px+1, py+1+(bs-2)*0.5);
+      hGrad.addColorStop(0, 'rgba(255,255,255,0.25)'); hGrad.addColorStop(1, 'rgba(255,255,255,0.0)');
+      holdCtx.fillStyle=hGrad; holdCtx.fill(path);
+    }}));
+  }
+
   function draw() {
     const skin = SKINS[currentSkin];
     ctx.fillStyle=skin.bg; ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -569,7 +693,7 @@
     // Draw board with flash animation
     board.forEach((row,y)=>row.forEach((val,x)=>{
       if (val) {
-        const isFlashing = clearAnim.active && clearAnim.rows.includes(y);
+        const isFlashing = clearAnim.active && clearAnim.rows.includes(y) && (clearAnim.flashPhase % 2 === 1);
         drawBlock(x,y,COLORS[val], true, ctx, isFlashing);
       }
     }));
@@ -589,26 +713,31 @@
       if (clearAnim.active || clearAnim.particles.length > 0) requestAnimationFrame(draw);
     }
 
-    if (current) { drawGhost(); current.shape.forEach((row,y)=>row.forEach((val,x)=>{ if(val) drawBlock(current.x+x,current.y+y,COLORS[current.type],true); })); }
+    if (current) {
+      drawGhost();
+      current.shape.forEach((row,y)=>row.forEach((val,x)=>{
+        if(val && current.y + y >= 0) drawBlock(current.x+x,current.y+y,COLORS[current.type],true,ctx);
+      }));
+    }
   }
 
-  // ===== INPUT =====
+  // ===== INPUT: Keyboard =====
   document.addEventListener('keydown',e=>{
     if (e.key==='ArrowLeft'){e.preventDefault();move(-1);}
     else if (e.key==='ArrowRight'){e.preventDefault();move(1);}
     else if (e.key==='ArrowUp'){e.preventDefault();rotatePiece();}
-    else if (e.key==='ArrowDown'){e.preventDefault();if(isValid(current,0,1)){current.y++;score+=1;updateStats();}draw();}
+    else if (e.key==='ArrowDown'){e.preventDefault();softDrop();}
     else if (e.key===' '){e.preventDefault();hardDrop();}
     else if (e.key==='p'||e.key==='P'){e.preventDefault();togglePause();}
     else if (e.key==='m'||e.key==='M'){e.preventDefault();toggleSound();}
+    else if (e.key==='h'||e.key==='H'){e.preventDefault();holdPiece();}
   });
 
   document.querySelectorAll('.vk-key').forEach(btn=>{
     if(btn.classList.contains('empty'))return;
     btn.addEventListener('click',e=>{e.preventDefault();const k=btn.dataset.key;
       if(k==='ArrowLeft')move(-1);else if(k==='ArrowRight')move(1);else if(k==='ArrowUp')rotatePiece();
-      else if(k==='ArrowDown'){if(isValid(current,0,1)){current.y++;score+=1;updateStats();}draw();}
-      else if(k==='Space')hardDrop();
+      else if(k==='ArrowDown')softDrop();else if(k==='Space')hardDrop();
     });
   });
 
@@ -617,6 +746,39 @@
     if (paused && started) { togglePause(); }
     else { const oldShare = overlay.querySelector('.vk-btn-secondary'); if (oldShare) oldShare.remove(); rewardBox.style.display = 'none'; resetGame(); }
   });
+
+  // ===== INPUT: Touch / Swipe =====
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0, lastTapTime = 0;
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY; touchStartTime = Date.now();
+  }, { passive: true });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    if (!started || gameOver || paused || clearAnim.active) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    const dt = Date.now() - touchStartTime;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+
+    if (dt < 300 && absDx < 12 && absDy < 12) {
+      // Tap -> rotate; double tap -> hard drop
+      const now = Date.now();
+      if (now - lastTapTime < 280) { hardDrop(); }
+      else { rotatePiece(); }
+      lastTapTime = now;
+      return;
+    }
+    if (absDx > absDy && absDx > 30) {
+      move(dx > 0 ? 1 : -1);
+    } else if (absDy > absDx && absDy > 30) {
+      if (dy > 0) softDrop();
+      else holdPiece();
+    }
+  }, { passive: true });
 
   // ===== VK VIEW HIDE / SHOW =====
   if (isVK) {
@@ -627,7 +789,7 @@
   }
 
   // ===== INIT =====
-  initAudio(); initStars(); drawNext(); draw();
+  initAudio(); initStars(); drawNext(); drawHold(); draw();
 })();
 </script>
 </body>
