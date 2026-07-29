@@ -929,7 +929,7 @@
   const LEGAL_TERMS = `<b>Пользовательское соглашение — «Звездопад»</b>
 
 1. Оператор: ИП Игнатов А.В., г. Магнитогорск. Контакт: vk.com/mgn_lan (личные сообщения ВКонтакте).
-2. Приложение «Звездопад» (VK Mini App ID 54597882) — казуальная игра. Возрастной рейтинг: 0+.
+2. Приложение «Звездопад» (VK Mini App ID 54698105) — казуальная игра. Возрастной рейтинг: 0+.
 3. Игра предоставляется «как есть». Оператор вправе изменять механики, баланс, награды и стоимость внутриигровых товаров без предварительного уведомления.
 4. Внутриигровая валюта «звёздная пыль» не является денежным эквивалентом, не подлежит обмену на деньги и используется только внутри игры.
 5. Покупки за голоса VK обрабатываются платёжной системой VK. Возврат средств регулируется правилами платформы VK.
@@ -1882,7 +1882,7 @@
       }
       if (VK.ready && skin.votes > 0) {
         try {
-          await VK.bridge.send('VKWebAppOpenInvoice', { app_id: 54597882, item: 'skin_' + skin.id });
+          await VK.bridge.send('VKWebAppOpenInvoice', { app_id: 54698105, item: 'skin_' + skin.id });
           this.grantSkin(skin);
         } catch (e) {
           toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
@@ -1908,7 +1908,7 @@
       if (Meta.noAds) return;
       if (VK.ready) {
         try {
-          await VK.bridge.send('VKWebAppOpenInvoice', { app_id: 54597882, item: 'no_ads_forever' });
+          await VK.bridge.send('VKWebAppOpenInvoice', { app_id: 54698105, item: 'no_ads_forever' });
           this.grantNoAds();
         } catch (e) { toast('Покупка отменена. Доступно за 1500 ✦'); }
       } else {
