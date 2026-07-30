@@ -155,8 +155,9 @@
   .consent-row {
     display: flex; gap: 10px; align-items: flex-start; text-align: left;
     font-size: 12.5px; color: var(--dim); line-height: 1.5; margin: 0 0 18px;
+    padding: 10px; cursor: pointer; border-radius: var(--radius-sm);
   }
-  .consent-row input { width: 20px; height: 20px; margin-top: 1px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+  .consent-row input { width: 26px; height: 26px; margin-top: 0; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
   .consent-row a { color: var(--accent); cursor: pointer; text-decoration: none; font-weight: 600; }
   .welcome-meta { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 18px; font-size: 12px; color: var(--faint); }
   .welcome-meta a { color: var(--dim); cursor: pointer; text-decoration: none; }
@@ -590,7 +591,7 @@
 
 <div id="toast"></div>
 
-<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js" async></script>
 <script>
 "use strict";
 /* ================= ЗВЕЗДОПАД — игровое ядро и мета-слой ================= */
@@ -631,7 +632,12 @@
   const VK = {
     ready: false, bridge: null, user: null,
     async init() {
-      const raw = window.vkBridge || (window.vk_connect && window.vk_connect.vkBridge);
+      // bridge грузится async — ждём его до 10 секунд (медленная сеть/WebView)
+      let raw = window.vkBridge || (window.vk_connect && window.vk_connect.vkBridge);
+      for (let i = 0; !raw && i < 40; i++) {
+        await new Promise(r => setTimeout(r, 250));
+        raw = window.vkBridge || (window.vk_connect && window.vk_connect.vkBridge);
+      }
       if (!raw) return;
       this.bridge = raw.default || raw;
       try {
@@ -1252,6 +1258,7 @@
 
     start(mode, opts) {
       opts = opts || {};
+      this.startedAt = performance.now();
       this.mode = mode;
       this.mission = null;
       if (mode === 'expedition') {
@@ -1817,27 +1824,41 @@
       else { $('overlay-pause').classList.add('hidden'); Audio2.startAmbient(); }
     },
     hide() { // сворачивание / visibilitychange
+      // VK mobile шлёт ViewHide/visibilitychange при стартовых переходах —
+      // не ставим паузу в первые 3 секунды после начала игры
+      if (Game.startedAt && performance.now() - Game.startedAt < 3000) return;
       if (Game.running && !Game.over && !Game.paused) this.toggle();
     },
     resume() { if (Game.paused) this.toggle(); }
   };
   document.addEventListener('visibilitychange', () => { if (document.hidden) SysPause.hide(); });
 
-  // ---------- Главный цикл (единственный rAF) ----------
+  // ---------- Главный цикл (единственный rAF + сторож) ----------
   const Loop = {
-    last: 0,
+    last: 0, _tickAt: 0,
+    tick(t) {
+      this._tickAt = performance.now();
+      const dt = Math.min(0.05, (t - this.last) / 1000 || 0.016);
+      this.last = t;
+      BG.draw(dt);
+      if ($('screen-game').classList.contains('active')) {
+        Game.update(dt);
+        Render.draw();
+      }
+    },
     start() {
-      const frame = (t) => {
-        const dt = Math.min(0.05, (t - this.last) / 1000 || 0.016);
-        this.last = t;
-        BG.draw(dt);
-        if ($('screen-game').classList.contains('active')) {
-          Game.update(dt);
-          Render.draw();
-        }
-        requestAnimationFrame(frame);
-      };
+      const frame = (t) => { this.tick(t); requestAnimationFrame(frame); };
       requestAnimationFrame(frame);
+      // Сторож: в некоторых WebView (VK mobile) rAF заглушается —
+      // тогда цикл подхватывает таймер из воркера (он не троттлится).
+      const poke = () => {
+        const now = performance.now();
+        if (now - this._tickAt > 500) this.tick(now);
+      };
+      try {
+        const w = new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'], { type: 'text/javascript' })));
+        w.onmessage = poke;
+      } catch (e) { setInterval(poke, 300); }
     }
   };
 
@@ -2334,7 +2355,7 @@
 
     // первая активация звука любым тапом
     document.addEventListener('pointerdown', function once() {
-      Audio2.init(); Audio2.resume();
+      try { Audio2.init(); Audio2.resume(); } catch (e) {}
       document.removeEventListener('pointerdown', once);
     }, { once: true });
   }
