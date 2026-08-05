@@ -1835,7 +1835,7 @@
 
   // ---------- Главный цикл (единственный rAF + сторож) ----------
   const Loop = {
-    last: 0, _tickAt: 0,
+    last: 0, _tickAt: 0, _errShown: false,
     tick(t) {
       this._tickAt = performance.now();
       const dt = Math.min(0.05, (t - this.last) / 1000 || 0.016);
@@ -1846,14 +1846,22 @@
         Render.draw();
       }
     },
+    safeTick(t) {
+      // защита от «вечного зависания»: исключение в тике не должно
+      // убивать rAF-цепочку — ловим, логируем, продолжаем кадры
+      try { this.tick(t); } catch (e) {
+        (window.__sfErrors = window.__sfErrors || []).push(String(e && e.stack || e).slice(0, 500));
+        if (!this._errShown) { this._errShown = true; toast('⚠️ Сбой кадра — игра продолжается. Сообщите нам: ' + String(e && e.message || e).slice(0, 80)); }
+      }
+    },
     start() {
-      const frame = (t) => { this.tick(t); requestAnimationFrame(frame); };
+      const frame = (t) => { requestAnimationFrame(frame); this.safeTick(t); };
       requestAnimationFrame(frame);
       // Сторож: в некоторых WebView (VK mobile) rAF заглушается —
       // тогда цикл подхватывает таймер из воркера (он не троттлится).
       const poke = () => {
         const now = performance.now();
-        if (now - this._tickAt > 500) this.tick(now);
+        if (now - this._tickAt > 500) this.safeTick(now);
       };
       try {
         const w = new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'], { type: 'text/javascript' })));
@@ -1861,6 +1869,10 @@
       } catch (e) { setInterval(poke, 300); }
     }
   };
+  // сбор необработанных ошибок — для диагностики зависаний на реальных устройствах
+  window.addEventListener('error', (ev) => {
+    (window.__sfErrors = window.__sfErrors || []).push(String(ev.message || '') + ' @ ' + String(ev.filename || '') + ':' + String(ev.lineno || ''));
+  });
 
   // ---------- Реклама (VK Ads + fallback) ----------
   const Ads = {
@@ -1903,8 +1915,9 @@
       }
       if (VK.ready && skin.votes > 0) {
         try {
-          await VK.bridge.send('VKWebAppOpenInvoice', { app_id: 54698105, item: 'skin_' + skin.id });
-          this.grantSkin(skin);
+          const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'skin_' + skin.id });
+          if (res && res.status === 'success') this.grantSkin(skin);
+          else toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
         } catch (e) {
           toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
         }
@@ -1929,8 +1942,9 @@
       if (Meta.noAds) return;
       if (VK.ready) {
         try {
-          await VK.bridge.send('VKWebAppOpenInvoice', { app_id: 54698105, item: 'no_ads_forever' });
-          this.grantNoAds();
+          const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'no_ads_forever' });
+          if (res && res.status === 'success') this.grantNoAds();
+          else toast('Покупка отменена. Доступно за 1500 ✦');
         } catch (e) { toast('Покупка отменена. Доступно за 1500 ✦'); }
       } else {
         if (Meta.dust < 1500) { toast('«Без рекламы» — 299 голосов или 1500 ✦'); return; }
