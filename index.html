@@ -644,6 +644,7 @@
         await this.bridge.send('VKWebAppInit');
         this.ready = true;
         try { this.user = await this.bridge.send('VKWebAppGetUserInfo'); } catch (e) {}
+        try { await this.syncFromCloud(); } catch (e) {}
         try {
           const cfg = await this.bridge.send('VKWebAppGetConfig');
           if (cfg && cfg.scheme && Theme.mode === 'auto') {
@@ -662,6 +663,27 @@
     },
     taptic() {
       if (this.ready) { try { this.bridge.send('VKWebAppTapticImpactOccurred', { style: 'light' }); } catch (e) {} }
+    },
+    // Синхронизация прогресса между платформами (требование п. 2.3.8):
+    // при старте подтягиваем сохранения из VK Storage — если играли на другом
+    // устройстве, прогресс (пыль, скины, миссии, рекорды) будет тот же.
+    async syncFromCloud() {
+      try {
+        const kr = await this.bridge.send('VKWebAppStorageGetKeys', { count: 1000, offset: 0 });
+        const keys = ((kr && kr.keys) || []).filter(k => k.indexOf(LS_PREFIX) === 0);
+        if (!keys.length) return;
+        const gr = await this.bridge.send('VKWebAppStorageGet', { keys });
+        const changed = [];
+        ((gr && gr.keys) || []).forEach(({ key, value }) => {
+          if (!value) return;
+          let localRaw = null;
+          try { localRaw = localStorage.getItem(key); } catch (e) {}
+          if (localRaw === value) return;
+          try { localStorage.setItem(key, value); } catch (e) {}
+          changed.push(key.slice(LS_PREFIX.length));
+        });
+        if (changed.length) Meta.applyLocal(changed);
+      } catch (e) {}
     }
   };
 
@@ -1148,6 +1170,18 @@
     },
     updateStreakUI() { $('streak-val').textContent = this.streak.count; },
 
+    // применить свежие значения из localStorage (после облачной синхронизации)
+    applyLocal(keys) {
+      const FIELDS = ['dust', 'skin', 'skinsOwned', 'noAds', 'goCounter', 'achDone', 'expedition', 'streak', 'daily', 'league'];
+      keys.forEach(k => {
+        if (k === 'stats') { Object.assign(this.stats, store.get('stats', {})); return; }
+        if (FIELDS.indexOf(k) === -1) return;
+        this[k] = store.get(k, this[k]);
+      });
+      this.updateDustUI();
+      this.updateStreakUI();
+    },
+
     // достижения
     checkAchievements() {
       const unlocked = [];
@@ -1262,7 +1296,10 @@
       this.mode = mode;
       this.mission = null;
       if (mode === 'expedition') {
-        const idx = Meta.expedition.done.findIndex(d => !d);
+        // NB: у пустого массива findIndex вернёт -1 — это НЕ «все выполнены»,
+        // а «ни одна не начата». -1 = все 30 пройдены, только если длина = 30.
+        let idx = Meta.expedition.done.findIndex(d => !d);
+        if (idx === -1 && Meta.expedition.done.length < MISSIONS.length) idx = Meta.expedition.done.length;
         if (idx === -1) { toast('🏔 Все 30 миссий выполнены!'); return; }
         this.mission = Object.assign({ idx }, MISSIONS[idx]);
       }
@@ -1916,9 +1953,12 @@
       if (VK.ready && skin.votes > 0) {
         try {
           const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'skin_' + skin.id });
-          if (res && res.status === 'success') this.grantSkin(skin);
+          (window.__sfPayLog = window.__sfPayLog || []).push('skin_' + skin.id + ' => ' + JSON.stringify(res));
+          // успех засчитываем по любому из признаков — форма ответа отличается между платформами
+          if (res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id)) this.grantSkin(skin);
           else toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
         } catch (e) {
+          (window.__sfPayLog = window.__sfPayLog || []).push('skin_' + skin.id + ' ERR ' + JSON.stringify((e && (e.error_data || e.message)) || e));
           toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
         }
       } else {
@@ -1943,9 +1983,13 @@
       if (VK.ready) {
         try {
           const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'no_ads_forever' });
-          if (res && res.status === 'success') this.grantNoAds();
+          (window.__sfPayLog = window.__sfPayLog || []).push('no_ads => ' + JSON.stringify(res));
+          if (res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id)) this.grantNoAds();
           else toast('Покупка отменена. Доступно за 1500 ✦');
-        } catch (e) { toast('Покупка отменена. Доступно за 1500 ✦'); }
+        } catch (e) {
+          (window.__sfPayLog = window.__sfPayLog || []).push('no_ads ERR ' + JSON.stringify((e && (e.error_data || e.message)) || e));
+          toast('Покупка отменена. Доступно за 1500 ✦');
+        }
       } else {
         if (Meta.dust < 1500) { toast('«Без рекламы» — 299 голосов или 1500 ✦'); return; }
         Meta.addDust(-1500, true);
@@ -2164,7 +2208,8 @@
     // ----- экспедиция -----
     renderExpedition() {
       const done = Meta.expedition.done;
-      const current = done.findIndex(d => !d);
+      let current = done.findIndex(d => !d);
+      if (current === -1 && done.length < MISSIONS.length) current = done.length;
       const html = MISSIONS.map((m, i) => {
         const cls = done[i] ? 'done' : (i === current ? 'current' : 'locked-m');
         const mark = done[i] ? '✓' : (i === current ? '▶' : m.n);
