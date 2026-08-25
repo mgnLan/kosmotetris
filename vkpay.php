@@ -31,6 +31,29 @@ $items = [
 
 // Проверка, что скрипт доступен (открыть файл в браузере)
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Access-Control-Allow-Origin: *');
+    // ?check=USER_ID — игра спрашивает, какие товары оплачены этим пользователем.
+    // Нужно для гарантированной выдачи: даже если клиент не получил ответ от VK,
+    // сервер уже подтвердил заказ — товар будет выдан при следующей проверке.
+    if (isset($_GET['check'])) {
+        $uid = preg_replace('/\D/', '', $_GET['check']);
+        $owned = [];
+        $log = @file_get_contents(__DIR__ . '/vkpay_log.txt');
+        if ($log !== false && $uid !== '') {
+            foreach (explode("\n", $log) as $line) {
+                if (strpos($line, 'order_status_change') === false) continue;
+                $j = json_decode(mb_substr($line, strpos($line, '{')), true);
+                if (!$j) continue;
+                if (isset($j['status']) && $j['status'] === 'chargeable'
+                    && isset($j['user_id']) && $j['user_id'] === $uid
+                    && !empty($j['item'])) {
+                    $owned[$j['item']] = true;
+                }
+            }
+        }
+        echo json_encode(['ok' => true, 'items' => array_keys($owned)], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
     echo json_encode(['ok' => true, 'service' => 'starfall-vk-payments', 'time' => date('c')]);
     exit;
 }

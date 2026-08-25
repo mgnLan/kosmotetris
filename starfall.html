@@ -645,6 +645,8 @@
         this.ready = true;
         try { this.user = await this.bridge.send('VKWebAppGetUserInfo'); } catch (e) {}
         try { await this.syncFromCloud(); } catch (e) {}
+        // довыдача оплаченных товаров по данным сервера (страховка моста)
+        setTimeout(() => { try { Shop.healPurchases(); } catch (e) {} }, 1500);
         try {
           const cfg = await this.bridge.send('VKWebAppGetConfig');
           if (cfg && cfg.scheme && Theme.mode === 'auto') {
@@ -1942,6 +1944,35 @@
 
   // ---------- Покупки (голоса VK + fallback на пыль) ----------
   const Shop = {
+    _healing: false,
+    // Сверка покупок с сервером: если VK подтвердил заказ, а мост не вернул
+    // успех (или ответ не распарсился) — сервер помнит оплату, выдаём товар.
+    async syncPurchases() {
+      if (!VK.ready || !VK.user || !VK.user.id) return [];
+      try {
+        const r = await fetch('https://podvezu.online/vkpay.php?check=' + VK.user.id);
+        const d = await r.json();
+        const items = (d && d.items) || [];
+        return items.filter(it => {
+          if (it === 'no_ads_forever') return !Meta.noAds;
+          if (it.indexOf('skin_') === 0) return Meta.skinsOwned.indexOf(it.slice(5)) === -1;
+          return false;
+        });
+      } catch (e) { return []; }
+    },
+    // самолечение: довыдать всё оплаченное (вызывается при старте и открытии магазина)
+    async healPurchases() {
+      if (this._healing) return;
+      this._healing = true;
+      try {
+        const list = await this.syncPurchases();
+        list.forEach(it => {
+          if (it === 'no_ads_forever') this.grantNoAds();
+          else { const s = skinById(it.slice(5)); if (s) this.grantSkin(s); }
+        });
+      } catch (e) {}
+      this._healing = false;
+    },
     async buySkin(skin) {
       if (Meta.skinsOwned.includes(skin.id)) {
         Meta.skin = skin.id; Meta.save();
@@ -1951,16 +1982,22 @@
         return;
       }
       if (VK.ready && skin.votes > 0) {
+        let paid = false;
         try {
           const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'skin_' + skin.id });
           (window.__sfPayLog = window.__sfPayLog || []).push('skin_' + skin.id + ' => ' + JSON.stringify(res));
           // успех засчитываем по любому из признаков — форма ответа отличается между платформами
-          if (res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id)) this.grantSkin(skin);
-          else toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
+          paid = !!(res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id));
         } catch (e) {
           (window.__sfPayLog = window.__sfPayLog || []).push('skin_' + skin.id + ' ERR ' + JSON.stringify((e && (e.error_data || e.message)) || e));
-          toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
         }
+        if (!paid) {
+          // мост мог не вернуть успех — сверяемся с сервером, вдруг оплата прошла
+          const got = await this.syncPurchases();
+          paid = got.indexOf('skin_' + skin.id) !== -1;
+        }
+        if (paid) this.grantSkin(skin);
+        else toast('Покупка отменена. Можно купить за ' + skin.dust + ' ✦');
       } else {
         // fallback: внутриигровая валюта
         if (Meta.dust < skin.dust) { toast('Не хватает пыли: нужно ' + skin.dust + ' ✦'); return; }
@@ -1981,15 +2018,20 @@
     async buyNoAds() {
       if (Meta.noAds) return;
       if (VK.ready) {
+        let paid = false;
         try {
           const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'no_ads_forever' });
           (window.__sfPayLog = window.__sfPayLog || []).push('no_ads => ' + JSON.stringify(res));
-          if (res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id)) this.grantNoAds();
-          else toast('Покупка отменена. Доступно за 1500 ✦');
+          paid = !!(res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id));
         } catch (e) {
           (window.__sfPayLog = window.__sfPayLog || []).push('no_ads ERR ' + JSON.stringify((e && (e.error_data || e.message)) || e));
-          toast('Покупка отменена. Доступно за 1500 ✦');
         }
+        if (!paid) {
+          const got = await this.syncPurchases();
+          paid = got.indexOf('no_ads_forever') !== -1;
+        }
+        if (paid) this.grantNoAds();
+        else toast('Покупка отменена. Доступно за 1500 ✦');
       } else {
         if (Meta.dust < 1500) { toast('«Без рекламы» — 299 голосов или 1500 ✦'); return; }
         Meta.addDust(-1500, true);
@@ -2178,6 +2220,7 @@
         el.onclick = () => Shop.buySkin(skinById(el.dataset.skin));
       });
       $('skin-noads').onclick = () => Shop.buyNoAds();
+      Shop.healPurchases(); // довыдать оплаченное, если мост в прошлый раз не вернул успех
     },
 
     // ----- лига -----
