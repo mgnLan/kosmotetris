@@ -311,6 +311,7 @@
   #modal {
     width: 100%; max-width: 520px; max-height: 86dvh; overflow-y: auto;
     padding: 22px; position: relative;
+    touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
     background: var(--panel-strong);
     border: 1px solid var(--hairline); border-radius: var(--radius);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
@@ -412,7 +413,7 @@
       <button class="btn btn-primary btn-block" id="btn-consent" disabled>Начать игру</button>
       <div class="welcome-meta">
         <span class="age-badge">0+</span>
-        <a href="https://vk.com/mgn_lan" target="_blank" rel="noopener">Поддержка</a>
+        <a data-community-link href="https://vk.com/mgn_lan" target="_blank" rel="noopener">Поддержка</a>
         <span>ИП Игнатов А.В.</span>
       </div>
     </div>
@@ -468,7 +469,7 @@
       <div class="menu-row" style="grid-template-columns:repeat(3,1fr);">
         <button class="menu-tile" id="btn-tut"><span class="t-ico">🖐</span>Как играть</button>
         <button class="menu-tile" id="btn-daily"><span class="t-ico">🎁</span>Награда дня</button>
-        <a class="menu-tile" href="https://vk.com/mgn_lan" target="_blank" rel="noopener" style="text-decoration:none;"><span class="t-ico">✉️</span>Поддержка</a>
+        <a class="menu-tile" data-community-link href="https://vk.com/mgn_lan" target="_blank" rel="noopener" style="text-decoration:none;"><span class="t-ico">✉️</span>Поддержка</a>
       </div>
       <div class="menu-foot">
         <a id="foot-terms">Соглашение</a>
@@ -955,10 +956,16 @@
     return '';
   }
 
+  // ---------- Контакт поддержки ----------
+  // ВАЖНО: после создания официального сообщества игры заменить значение
+  // на его короткий адрес (например 'club234567890' или 'starfall_game').
+  const COMMUNITY = 'vk.com/mgn_lan';
+  document.querySelectorAll('[data-community-link]').forEach(a => { a.href = 'https://' + COMMUNITY.replace(/^https?:\/\//, ''); });
+
   // ---------- Юридические тексты ----------
   const LEGAL_TERMS = `<b>Пользовательское соглашение — «Звездопад»</b>
 
-1. Оператор: ИП Игнатов А.В., г. Магнитогорск. Контакт: vk.com/mgn_lan (личные сообщения ВКонтакте).
+1. Оператор: ИП Игнатов А.В., г. Магнитогорск. Контакт: ${COMMUNITY} (официальное сообщество игры ВКонтакте).
 2. Приложение «Звездопад» (VK Mini App ID 54698105) — казуальная игра. Возрастной рейтинг: 0+.
 3. Игра предоставляется «как есть». Оператор вправе изменять механики, баланс, награды и стоимость внутриигровых товаров без предварительного уведомления.
 4. Внутриигровая валюта «звёздная пыль» не является денежным эквивалентом, не подлежит обмену на деньги и используется только внутри игры.
@@ -970,14 +977,14 @@
 Редакция от 22.07.2026.`;
   const LEGAL_PRIVACY = `<b>Политика конфиденциальности — «Звездопад»</b>
 
-1. Оператор данных: ИП Игнатов А.В., г. Магнитогорск. Контакт: vk.com/mgn_lan (личные сообщения ВКонтакте).
+1. Оператор данных: ИП Игнатов А.В., г. Магнитогорск. Контакт: ${COMMUNITY} (официальное сообщество игры ВКонтакте).
 2. Какие данные обрабатываются:
    — игровой прогресс (очки, достижения, скины, стрик) — хранится локально на устройстве и в хранилище VK Storage;
    — базовый профиль VK (имя, аватар) — только для отображения в рейтингах, при наличии разрешения платформы.
 3. Данные не передаются третьим лицам и не используются для рекламного профилирования оператором. Показ рекламы выполняется рекламной сетью VK по её собственной политике.
 4. Игровой прогресс можно удалить, очистив данные приложения в настройках VK или хранилище браузера.
 5. Файлы cookie и аналогичные технологии используются только для сохранения настроек игры.
-6. По вопросам обработки данных: vk.com/mgn_lan (личные сообщения ВКонтакте).
+6. По вопросам обработки данных: ${COMMUNITY} (официальное сообщество игры ВКонтакте).
 
 Редакция от 22.07.2026.`;
 
@@ -2263,8 +2270,10 @@
         </div>`;
       }).join('');
       const doneCount = done.filter(Boolean).length;
-      this.modal('🛰 Экспедиция · ' + doneCount + '/30', html +
-        (current !== -1 ? '<div style="margin-top:14px;"><button class="btn btn-primary btn-block" id="exp-play">Играть миссию ' + MISSIONS[current].n + '</button></div>' : '<p style="text-align:center;margin-top:12px;">🏔 Все миссии пройдены!</p>'));
+      const playHtml = current !== -1
+        ? '<div style="margin-bottom:14px;"><button class="btn btn-primary btn-block" id="exp-play">▶ Играть миссию ' + MISSIONS[current].n + '</button></div>'
+        : '<p style="text-align:center;margin-bottom:12px;">🏔 Все миссии пройдены!</p>';
+      this.modal('🛰 Экспедиция · ' + doneCount + '/30', playHtml + html);
       const btn = $('exp-play');
       if (btn) btn.onclick = () => { this.closeModal(); Game.start('expedition'); };
     },
