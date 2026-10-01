@@ -2481,7 +2481,7 @@
         if (paid) { Meta.grantPassDays(30); UI.renderSkins(); }
         else toast('Покупка отменена. Пропуск доступен за 2000 ✦');
       } else {
-        if (Meta.dust < 2000) { toast('Звёздный пропуск — 149 голосов или 2000 ✦'); return; }
+        if (Meta.dust < 2000) { toast('Звёздный пропуск — 99 голосов или 2000 ✦'); return; }
         Meta.addDust(-2000, true);
         Meta.grantPassDays(30);
         UI.renderSkins();
@@ -2723,7 +2723,7 @@
             <div class="skin-name">Звёздный пропуск · 30 дней</div>
             <div class="skin-desc">${Meta.hasPass() ? 'Активен ещё ' + Meta.passDays() + ' дн.' : '+50% пыли · +150 ✦ ежедневно · скин «Звёздный час»'}</div>
           </div>
-          <button class="btn btn-sm ${Meta.hasPass() ? '' : 'btn-gold'}">${Meta.hasPass() ? '✓' : (VK.ready ? '149 гол.' : '2000 ✦')}</button>
+          <button class="btn btn-sm ${Meta.hasPass() ? '' : 'btn-gold'}">${Meta.hasPass() ? '✓' : (VK.ready ? '99 гол.' : '2000 ✦')}</button>
         </div>`;
       this.modal('🎨 Магазин скинов · ✦ ' + Meta.dust, items + noAds + pass);
       document.querySelectorAll('[data-skin]').forEach(el => {
