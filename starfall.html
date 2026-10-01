@@ -339,6 +339,19 @@
   .gal-bar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .gal-bar .btn { flex: 1; min-width: 110px; }
 
+  /* ===== Метеор: кнопка «Забрать» ===== */
+  #btn-cash {
+    position: absolute; top: 10px; right: 10px; z-index: 5;
+    font-weight: 800; font-size: 13px; padding: 10px 14px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.45);
+    animation: cashPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes cashPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  #btn-cash.hidden { display: none; }
+
   .ach-item { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--hairline-soft); }
   .ach-item:last-child { border-bottom: none; }
   .ach-ico { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 19px; background: var(--btn-bg); border: 1px solid var(--hairline-soft); flex-shrink: 0; }
@@ -445,7 +458,7 @@
     <div class="menu-wrap">
       <div class="menu-hero">
         <h1 id="menu-hello">Выбери режим</h1>
-        <p id="menu-sub">Четыре пути к звёздам</p>
+        <p id="menu-sub">Пять путей к звёздам</p>
       </div>
       <div class="mode-grid">
         <button class="mode-card" data-mode="marathon">
@@ -465,6 +478,12 @@
           <span class="m-name">Ультра 2:00</span>
           <span class="m-desc">Две минуты. Максимум очков, никакой пощады.</span>
           <span class="m-best" id="best-ultra"></span>
+        </button>
+        <button class="mode-card" data-mode="meteor">
+          <span class="m-ico">☄️</span>
+          <span class="m-name">Метеор</span>
+          <span class="m-desc">Каждый блок ускоряет падение и растит множитель. Забери выигрыш — или сгори.</span>
+          <span class="m-best" id="best-meteor"></span>
         </button>
         <button class="mode-card" data-mode="expedition">
           <span class="m-ico">🛰</span>
@@ -523,6 +542,7 @@
         <div id="board-wrap">
           <div id="board-frame"></div>
           <canvas id="board-canvas"></canvas>
+          <button class="btn btn-gold hidden" id="btn-cash" title="Забрать выигрыш (C)">💰 Забрать ×1</button>
           <div id="gold-flash"></div>
           <div id="banner"></div>
           <div class="stage-overlay" id="overlay-start">
@@ -1140,7 +1160,9 @@
     { id: 'streak7',     ico: '🔥', name: 'Недельный воин',    desc: 'Стрик 7 дней подряд',               target: 7,    metric: S => S.bestStreak },
     { id: 'duel1',       ico: '⚔️', name: 'Дуэлянт',           desc: 'Принять или бросить вызов',         target: 1,    metric: S => S.duels },
     { id: 'gal1',        ico: '🖼', name: 'Первый постер',     desc: 'Собрать постер в Галерее',          target: 1,    metric: S => Gallery.doneCount() },
-    { id: 'galAll',      ico: '🌌', name: 'Хранитель галереи', desc: 'Собрать все 12 постеров',           target: 12,   metric: S => Gallery.doneCount() }
+    { id: 'galAll',      ico: '🌌', name: 'Хранитель галереи', desc: 'Собрать все 12 постеров',           target: 12,   metric: S => Gallery.doneCount() },
+    { id: 'meteor1',     ico: '💰', name: 'Первая добыча',     desc: 'Забрать выигрыш в «Метеоре»',       target: 1,    metric: S => (S.meteorBest || 0) > 0 ? 1 : 0 },
+    { id: 'meteorX10',   ico: '🔥', name: 'Горячая рука',      desc: 'Дойти до множителя ×10 в «Метеоре»', target: 10,  metric: S => S.meteorMaxMult || 0 }
   ];
 
   // ---------- Экспедиция: 30 миссий ----------
@@ -1368,7 +1390,8 @@
       games: 0, lines: 0, doubles: 0, triples: 0, quads: 0,
       bestScore: 0, bestLevel: 1, bestCombo: 0, holds: 0,
       missions: 0, bestStreak: 0, duels: 0,
-      sprintBest: null, ultraBest: 0, marathonBest: 0
+      sprintBest: null, ultraBest: 0, marathonBest: 0,
+      meteorBest: 0, meteorMaxMult: 0
     }, store.get('stats', {})),
     league: store.get('league', { week: weekKey(), scores: [] }),
     gallery: store.get('gallery', { frags: {}, active: null, bg: null }),
@@ -1485,6 +1508,7 @@
     marathon:   { name: 'Марафон',     desc: 'Классика. Скорость растёт каждые 10 линий.', target: null },
     sprint:     { name: 'Спринт 40',   desc: 'Очисти 40 линий как можно быстрее.', target: 40 },
     ultra:      { name: 'Ультра 2:00', desc: 'Две минуты. Набери максимум очков.', target: 120 },
+    meteor:     { name: 'Метеор',      desc: 'Каждый блок ускоряет падение и растит множитель. Забери выигрыш — или сгори.', target: null },
     expedition: { name: 'Экспедиция',  desc: '', target: null }
   };
 
@@ -1507,7 +1531,11 @@
     softHeld: false,
     staticDirty: true,
 
-    dropInterval() { return Math.max(85, 800 - (this.level - 1) * 68); },
+    dropInterval() {
+      // Метеор: скорость растёт с КАЖДЫМ установленным блоком
+      if (this.mode === 'meteor') return Math.max(80, 760 - this.meteor.pieces * 11);
+      return Math.max(85, 800 - (this.level - 1) * 68);
+    },
 
     newBag() {
       const bag = PIECE_KEYS.slice();
@@ -1569,6 +1597,8 @@
       this.shakeT = 0; this.squashT = 0;
       this.clearAnim = null; this.particles = []; this.floaters = [];
       this.softHeld = false; this.staticDirty = true;
+      this.meteor = { pieces: 0, mult: 1 }; // Метеор (2.1): риск и множитель
+      this.meteorBanked = 0;
       Meta.secondChanceUsed = false;
       this.spawn();
       UI.showScreen('game');
@@ -1634,6 +1664,27 @@
       this.holdUsed = true;
       Render.drawMinis();
     },
+    // ----- Метеор (2.1): push-your-luck -----
+    meteorTick() {
+      if (this.mode !== 'meteor') return;
+      this.meteor.pieces++;
+      const m = Math.min(12, 1 + Math.floor(this.meteor.pieces / 4));
+      if (m > this.meteor.mult) {
+        this.meteor.mult = m;
+        UI.banner('Множитель ×' + m, true);
+        UI.updateHUD();
+        const cash = $('btn-cash');
+        if (cash) cash.textContent = '💰 Забрать ×' + m;
+        Audio2.sfx('record');
+      }
+    },
+    cashOut() {
+      if (this.mode !== 'meteor' || this.over || !this.running || this.paused) return;
+      this.meteorBanked = Math.max(0, Math.round(this.score * this.meteor.mult));
+      Audio2.sfx('reward');
+      this.finish(true, 'meteor');
+    },
+
     alive() { return this.running && !this.paused && !this.over && !this.clearAnim && this.piece; },
 
     lock() {
@@ -1645,6 +1696,7 @@
         this.board[ny][p.x + x] = p.type;
       }));
       if (this.over) return;
+      this.meteorTick(); // Метеор: блок установлен — жар растёт
       this.squashT = 1;
       this.staticDirty = true;
       Audio2.sfx('lock');
@@ -1757,6 +1809,16 @@
       if (this.level > S.bestLevel) S.bestLevel = this.level;
       if (this.score > S.bestScore) S.bestScore = this.score;
       let record = false;
+      // Метеор: забрал — счёт × множитель; переполнение стека — сгорание (10% утешения)
+      let effScore = this.score;
+      if (this.mode === 'meteor') {
+        const burned = !(victory && reason === 'meteor');
+        effScore = burned ? Math.round(this.score * this.meteor.mult * 0.1) : (this.meteorBanked || 0);
+        if (this.meteor.mult > (S.meteorMaxMult || 0)) S.meteorMaxMult = this.meteor.mult;
+        if (effScore > (S.meteorBest || 0)) { S.meteorBest = effScore; record = effScore > 0; }
+        if (this.score > S.bestScore) S.bestScore = this.score;
+      }
+      this.finalScore = effScore;
       if (this.mode === 'marathon' && this.score > S.marathonBest) { S.marathonBest = this.score; record = this.score > 0; }
       if (this.mode === 'ultra' && this.score > S.ultraBest) { S.ultraBest = this.score; record = this.score > 0; }
       if (this.mode === 'sprint' && victory && (!S.sprintBest || this.elapsed < S.sprintBest)) { S.sprintBest = this.elapsed; record = true; }
@@ -1767,10 +1829,12 @@
         toast(`🛰 Миссия ${this.mission.n} выполнена! +${this.mission.reward} ✦`);
       }
       if (this.duel) S.duels++;
-      // пыль за игру
-      const dustGain = Math.floor(this.score / 500) + this.lines * 2;
+      // пыль за игру (в Метеоре — от эффективного счёта)
+      const dustGain = this.mode === 'meteor'
+        ? Math.floor(effScore / 200)
+        : Math.floor(this.score / 500) + this.lines * 2;
       if (dustGain > 0) Meta.addDust(dustGain, true);
-      if (this.score > 0) Meta.leagueSubmit(this.score);
+      if (this.score > 0) Meta.leagueSubmit(this.mode === 'meteor' ? effScore : this.score);
       Meta.save();
       Meta.checkAchievements();
       if (record) Audio2.sfx('record');
@@ -2063,6 +2127,7 @@
       case 'p': case 'P': case 'з': case 'З': e.preventDefault(); SysPause.toggle(); break;
       case 'h': case 'H': case 'р': case 'Р': e.preventDefault(); Game.holdPiece(); break;
       case 'm': case 'M': case 'ь': case 'Ь': e.preventDefault(); Audio2.init(); Audio2.toggle(); break;
+      case 'c': case 'C': case 'с': case 'С': e.preventDefault(); Game.cashOut(); break;
     }
   });
   document.addEventListener('keyup', (e) => {
@@ -2375,6 +2440,10 @@
     setupModeUI() {
       const m = MODES[Game.mode];
       let title = m.name, desc = m.desc;
+      if (Game.mode === 'meteor') {
+        title = '☄️ Метеор';
+        desc = 'Каждый блок: скорость ↑ и множитель ↑. Кнопка «Забрать» (или клавиша C) фиксирует счёт × множитель. Переполнил стек — метеор сгорит.';
+      }
       if (Game.mode === 'expedition' && Game.mission) {
         title = 'Миссия ' + Game.mission.n + '/30';
         desc = Game.mission.desc + ' · награда ' + Game.mission.reward + ' ✦';
@@ -2388,6 +2457,18 @@
       $('target-val').textContent = Game.mode === 'sprint' ? '40 линий' : '—';
       $('row-timer').style.display = (Game.mode === 'sprint' || Game.mode === 'ultra' || Game.mode === 'expedition') ? '' : 'none';
       $('lines-label-m').textContent = Game.mode === 'sprint' ? 'Линии/40' : 'Линии';
+      // Метеор: видимость кнопки «Забрать» и заголовок счёта с множителем
+      const cash = $('btn-cash');
+      if (cash) {
+        cash.classList.toggle('hidden', Game.mode !== 'meteor');
+        cash.textContent = '💰 Забрать ×' + (Game.meteor ? Game.meteor.mult : 1);
+      }
+      this.updateMeteorHUD();
+    },
+    updateMeteorHUD() {
+      if (Game.mode !== 'meteor') { $('score-label').textContent = 'Счёт'; return; }
+      const risk = Math.round(Game.score * Game.meteor.mult).toLocaleString('ru-RU');
+      $('score-label').innerHTML = 'Риск · ×' + Game.meteor.mult + ' <span style="color:var(--gold);font-size:10px;">≈' + risk + '</span>';
     },
     updateHUD() {
       $('score-val').textContent = Game.score.toLocaleString('ru-RU');
@@ -2395,6 +2476,7 @@
       $('level-val').textContent = Game.level;
       $('lines-val').textContent = Game.mode === 'sprint' ? Game.lines + '/40' : Game.lines;
       $('lines-val-m').textContent = Game.lines;
+      this.updateMeteorHUD();
     },
     updateTimer() {
       if (Game.mode === 'ultra') $('timer-val').textContent = fmtTime(Game.ultraLeft);
@@ -2402,11 +2484,21 @@
     },
     showGameOver(victory, reason, record, dustGain) {
       const t = $('over-title'), s = $('over-sub');
-      let title = 'Игра окончена', parts = [];
+      let title = 'Игра окончена';
       if (reason === 'mission') title = '🛰 Миссия выполнена!';
       else if (reason === 'sprint') title = '⚡ Финиш!';
       else if (reason === 'ultra') title = '⏱ Время вышло!';
-      parts.push('Счёт: <b>' + Game.score.toLocaleString('ru-RU') + '</b>');
+      else if (reason === 'meteor') title = '💰 Забрано!';
+      else if (reason === 'topout' && Game.mode === 'meteor') title = '☄️ Метеор сгорел!';
+      const parts = [];
+      if (Game.mode === 'meteor') {
+        const risk = Math.round(Game.score * Game.meteor.mult);
+        if (reason === 'meteor') parts.push('Забрано: <b>' + (Game.meteorBanked || 0).toLocaleString('ru-RU') + '</b>');
+        else parts.push('Утешение: <b>' + (Game.finalScore || 0).toLocaleString('ru-RU') + '</b> · Сгорело: <b>' + risk.toLocaleString('ru-RU') + '</b>');
+        parts.push('Множитель: <b>×' + Game.meteor.mult + '</b>');
+      } else {
+        parts.push('Счёт: <b>' + Game.score.toLocaleString('ru-RU') + '</b>');
+      }
       parts.push('Линии: <b>' + Game.lines + '</b>');
       if (reason === 'sprint') parts.push('Время: <b>' + fmtTimeMs(Game.elapsed) + '</b>');
       if (record) parts.push('🎉 <b>Новый рекорд!</b>');
@@ -2417,8 +2509,9 @@
       }
       t.textContent = title;
       s.innerHTML = parts.join(' · ');
-      // второй шанс — только за обычный проигрыш и один раз
-      $('btn-second').style.display = (!victory && !Meta.secondChanceUsed) ? '' : 'none';
+      // второй шанс — только за обычный проигрыш и один раз (в Метеоре сгорание неотвратимо)
+      $('btn-second').style.display = (!victory && !Meta.secondChanceUsed && Game.mode !== 'meteor') ? '' : 'none';
+      $('btn-cash').classList.add('hidden');
       $('overlay-over').classList.remove('hidden');
       Render.drawMinis();
     },
@@ -2749,6 +2842,7 @@
       $('best-marathon').textContent = S.marathonBest ? 'Рекорд: ' + S.marathonBest.toLocaleString('ru-RU') : '';
       $('best-sprint').textContent = S.sprintBest ? 'Лучшее: ' + fmtTimeMs(S.sprintBest) : '';
       $('best-ultra').textContent = S.ultraBest ? 'Рекорд: ' + S.ultraBest.toLocaleString('ru-RU') : '';
+      $('best-meteor').textContent = S.meteorBest ? 'Лучшая добыча: ' + S.meteorBest.toLocaleString('ru-RU') : '';
       const doneCount = Meta.expedition.done.filter(Boolean).length;
       $('best-expedition').textContent = 'Пройдено: ' + doneCount + '/30';
       if (VK.user) $('menu-hello').textContent = 'Привет, ' + (VK.user.first_name || 'звёздный') + '!';
@@ -2810,6 +2904,7 @@
       UI.showScreen('menu');
     });
     $('btn-play').addEventListener('click', () => {}); // старт происходит из Game.start
+    $('btn-cash').addEventListener('click', () => Game.cashOut());
     $('btn-again').addEventListener('click', () => Game.start(Game.mode, Game.duel ? { duel: Game.duel } : {}));
     $('btn-tomenu').addEventListener('click', () => UI.showScreen('menu'));
     $('btn-share').addEventListener('click', () => UI.shareScore());
