@@ -326,6 +326,19 @@
   .legal-text { font-size: 12.5px; color: var(--dim); line-height: 1.65; white-space: pre-wrap; }
   .legal-text b { color: var(--text); }
 
+  /* ===== Галерея постеров (2.1) ===== */
+  .gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 480px) { .gal-grid { grid-template-columns: repeat(2, 1fr); } }
+  .gal-card { cursor: pointer; border-radius: 13px; overflow: hidden; border: 1px solid var(--hairline-soft); background: var(--btn-bg); padding: 6px; transition: transform .15s ease, border-color .15s ease; }
+  .gal-card:active { transform: scale(0.96); }
+  .gal-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .gal-card.gal-done { border-color: var(--gold); }
+  .gal-card canvas { width: 100%; border-radius: 8px; display: block; }
+  .gal-card .gal-name { font-size: 11px; font-weight: 800; margin-top: 5px; }
+  .gal-card .gal-prog { font-size: 10px; color: var(--dim); font-weight: 600; }
+  .gal-bar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .gal-bar .btn { flex: 1; min-width: 110px; }
+
   .ach-item { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--hairline-soft); }
   .ach-item:last-child { border-bottom: none; }
   .ach-ico { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 19px; background: var(--btn-bg); border: 1px solid var(--hairline-soft); flex-shrink: 0; }
@@ -466,7 +479,8 @@
         <button class="menu-tile" id="btn-league"><span class="t-ico">🏆</span>Лига недели</button>
         <button class="menu-tile" id="btn-duel"><span class="t-ico">⚔️</span>Дуэль</button>
       </div>
-      <div class="menu-row" style="grid-template-columns:repeat(3,1fr);">
+      <div class="menu-row" style="grid-template-columns:repeat(4,1fr);">
+        <button class="menu-tile" id="btn-gallery"><span class="t-ico">🖼</span>Галерея</button>
         <button class="menu-tile" id="btn-tut"><span class="t-ico">🖐</span>Как играть</button>
         <button class="menu-tile" id="btn-daily"><span class="t-ico">🎁</span>Награда дня</button>
         <a class="menu-tile" data-community-link href="https://vk.com/mgn_lan" target="_blank" rel="noopener" style="text-decoration:none;"><span class="t-ico">✉️</span>Поддержка</a>
@@ -876,6 +890,227 @@
   ];
   function skinById(id) { return SKINS.find(s => s.id === id) || SKINS[0]; }
 
+  // ---------- Галерея постеров (2.1): 12 постеров по 20 фрагментов ----------
+  // Постеры генерируются процедурно (seeded) — без внешних картинок и копирайта.
+  const GAL_FRAGS = 20, GAL_COLS = 5, GAL_ROWS = 4;
+  const POSTERS = [
+    { id: 'neb',     name: 'Туманность Ориона',      votes: 10, feature: 'nebula' },
+    { id: 'ring',    name: 'Кольцевая гиганта',      votes: 10, feature: 'ringed' },
+    { id: 'spiral',  name: 'Галактика',              votes: 15, feature: 'spiral' },
+    { id: 'comet',   name: 'Комета',                 votes: 15, feature: 'comet' },
+    { id: 'aurora',  name: 'Полярное сияние',        votes: 20, feature: 'aurora' },
+    { id: 'eclipse', name: 'Затмение',               votes: 20, feature: 'eclipse' },
+    { id: 'hole',    name: 'Чёрная дыра',            votes: 25, feature: 'hole' },
+    { id: 'cluster', name: 'Скопление Плеяд',        votes: 25, feature: 'cluster' },
+    { id: 'station', name: 'Орбитальная станция',    votes: 30, feature: 'station' },
+    { id: 'sunset',  name: 'Закат на Титане',        votes: 30, feature: 'sunset' },
+    { id: 'meteor',  name: 'Метеорный поток',        votes: 40, feature: 'meteor' },
+    { id: 'earth',   name: 'Земля из иллюминатора',  votes: 50, feature: 'earth' }
+  ];
+  function posterById(id) { return POSTERS.find(p => p.id === id) || POSTERS[0]; }
+
+  // Генерация постера: космос + сюжет. Детерминировано по id (seed из хэша строки).
+  function posterSeed(id) { let h = 2166136261; for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+  function genPosterCanvas(p, w, h) {
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const c = cv.getContext('2d');
+    const rng = mulberry32(posterSeed(p.id));
+    const R = (a, b) => a + rng() * (b - a);
+    // базовый градиент ночного неба
+    const g = c.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#05060d'); g.addColorStop(0.55, '#0a0d1e'); g.addColorStop(1, '#060812');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    // звёзды (два слоя)
+    for (let i = 0; i < 130; i++) {
+      const s = R(0.4, 1.8), a = R(0.25, 1);
+      c.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
+      c.beginPath(); c.arc(rng() * w, rng() * h, s, 0, Math.PI * 2); c.fill();
+    }
+    const cx = w / 2, cy = h * 0.44;
+    const f = p.feature;
+    if (f === 'nebula' || f === 'cluster' || f === 'aurora') {
+      // цветные туманности
+      const hues = f === 'aurora' ? [150, 170, 190, 210] : [R(180, 260), R(280, 340), R(200, 240)];
+      for (let i = 0; i < 6; i++) {
+        const x = rng() * w, y = rng() * h, r = R(w * 0.25, w * 0.6);
+        const rad = c.createRadialGradient(x, y, 0, x, y, r);
+        rad.addColorStop(0, 'hsla(' + hues[i % hues.length].toFixed(0) + ',80%,60%,0.30)');
+        rad.addColorStop(1, 'hsla(0,0%,0%,0)');
+        c.fillStyle = rad; c.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      if (f === 'aurora') { // занавесы
+        for (let i = 0; i < 4; i++) {
+          const x0 = R(0, w);
+          const ag = c.createLinearGradient(x0, 0, x0 + R(-40, 40), h * 0.7);
+          ag.addColorStop(0, 'hsla(' + R(140, 190).toFixed(0) + ',90%,65%,0.35)');
+          ag.addColorStop(1, 'hsla(0,0%,0%,0)');
+          c.fillStyle = ag; c.fillRect(x0 - R(15, 45), 0, R(50, 110), h * 0.75);
+        }
+      }
+      if (f === 'cluster') { // плотное скопление
+        for (let i = 0; i < 90; i++) {
+          const ang = rng() * Math.PI * 2, d = Math.pow(rng(), 0.5) * w * 0.28;
+          c.fillStyle = 'rgba(210,225,255,' + R(0.4, 1).toFixed(2) + ')';
+          c.beginPath(); c.arc(cx + Math.cos(ang) * d, cy + Math.sin(ang) * d * 0.8, R(0.5, 2.0), 0, Math.PI * 2); c.fill();
+        }
+      }
+    }
+    if (f === 'ringed' || f === 'earth') {
+      // планета
+      const pr = w * R(0.22, 0.3), px = cx, py = cy;
+      const pg = c.createRadialGradient(px - pr * 0.4, py - pr * 0.4, pr * 0.1, px, py, pr);
+      if (f === 'earth') { pg.addColorStop(0, '#8fd0ff'); pg.addColorStop(0.5, '#2f6fd6'); pg.addColorStop(1, '#0a2050'); }
+      else { pg.addColorStop(0, '#ffd9b0'); pg.addColorStop(0.6, '#c98a5a'); pg.addColorStop(1, '#5a2a20'); }
+      c.fillStyle = pg; c.beginPath(); c.arc(px, py, pr, 0, Math.PI * 2); c.fill();
+      if (f === 'earth') { // континенты
+        c.fillStyle = 'rgba(90,200,120,0.7)';
+        for (let i = 0; i < 7; i++) { c.beginPath(); c.ellipse(px + R(-pr, pr) * 0.7, py + R(-pr, pr) * 0.7, R(4, 14), R(3, 9), R(0, 3), 0, Math.PI * 2); c.fill(); }
+      }
+      if (f === 'ringed') { // кольца
+        c.save(); c.translate(px, py); c.rotate(-0.35);
+        c.strokeStyle = 'rgba(255,220,170,0.75)'; c.lineWidth = pr * 0.14;
+        c.beginPath(); c.ellipse(0, 0, pr * 1.7, pr * 0.45, 0, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = 'rgba(255,240,210,0.5)'; c.lineWidth = pr * 0.06;
+        c.beginPath(); c.ellipse(0, 0, pr * 2.0, pr * 0.55, 0, 0, Math.PI * 2); c.stroke();
+        c.restore();
+      }
+      if (f === 'earth') { // иллюминатор — ободок
+        c.strokeStyle = 'rgba(160,200,255,0.5)'; c.lineWidth = w * 0.03;
+        c.beginPath(); c.arc(px, py, pr * 1.35, 0, Math.PI * 2); c.stroke();
+      }
+    }
+    if (f === 'spiral') {
+      for (let arm = 0; arm < 2; arm++) {
+        for (let i = 0; i < 260; i++) {
+          const t = i / 260, ang = t * 5.2 + arm * Math.PI;
+          const d = t * w * 0.42;
+          c.fillStyle = 'rgba(' + (200 + R(-30, 55)).toFixed(0) + ',' + (200 + R(-20, 40)).toFixed(0) + ',255,' + R(0.2, 0.9).toFixed(2) + ')';
+          c.beginPath(); c.arc(cx + Math.cos(ang) * d, cy + Math.sin(ang) * d * 0.62, R(0.4, 1.7), 0, Math.PI * 2); c.fill();
+        }
+      }
+      const cg = c.createRadialGradient(cx, cy, 0, cx, cy, w * 0.12);
+      cg.addColorStop(0, 'rgba(255,250,235,0.95)'); cg.addColorStop(1, 'rgba(255,250,235,0)');
+      c.fillStyle = cg; c.fillRect(cx - w * 0.12, cy - w * 0.12, w * 0.24, w * 0.24);
+    }
+    if (f === 'comet' || f === 'meteor') {
+      const n = f === 'meteor' ? 7 : 1;
+      for (let i = 0; i < n; i++) {
+        const x0 = R(w * 0.1, w * 0.9), y0 = R(h * 0.05, h * 0.35);
+        const dx = R(-0.5, 0.5), len = R(h * 0.25, h * 0.55);
+        const tg = c.createLinearGradient(x0, y0, x0 + dx * len, y0 + len);
+        tg.addColorStop(0, 'rgba(255,255,255,0.95)'); tg.addColorStop(1, 'rgba(140,190,255,0)');
+        c.strokeStyle = tg; c.lineWidth = R(1.5, 3.5);
+        c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + dx * len, y0 + len); c.stroke();
+        c.fillStyle = '#ffffff'; c.beginPath(); c.arc(x0, y0, R(2, 4), 0, Math.PI * 2); c.fill();
+      }
+      if (f === 'comet') { const hg = c.createRadialGradient(w * 0.72, h * 0.16, 0, w * 0.72, h * 0.16, w * 0.22); hg.addColorStop(0, 'rgba(180,220,255,0.5)'); hg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = hg; c.fillRect(0, 0, w, h); }
+    }
+    if (f === 'eclipse') {
+      c.fillStyle = '#02030a'; c.beginPath(); c.arc(cx, cy, w * 0.3, 0, Math.PI * 2); c.fill();
+      c.save(); c.shadowColor = 'rgba(255,230,170,0.9)'; c.shadowBlur = w * 0.09;
+      c.strokeStyle = 'rgba(255,235,190,0.95)'; c.lineWidth = 2.2;
+      c.beginPath(); c.arc(cx, cy, w * 0.305, 0, Math.PI * 2); c.stroke(); c.restore();
+      const crg = c.createRadialGradient(cx, cy, w * 0.3, cx, cy, w * 0.55);
+      crg.addColorStop(0, 'rgba(255,225,160,0.35)'); crg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = crg; c.fillRect(0, 0, w, h);
+    }
+    if (f === 'hole') {
+      const ag = c.createRadialGradient(cx, cy, w * 0.08, cx, cy, w * 0.45);
+      ag.addColorStop(0, 'rgba(0,0,0,1)'); ag.addColorStop(0.5, 'rgba(255,160,60,0.85)');
+      ag.addColorStop(0.72, 'rgba(255,220,150,0.35)'); ag.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = ag; c.beginPath(); c.arc(cx, cy, w * 0.45, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#000'; c.beginPath(); c.arc(cx, cy, w * 0.13, 0, Math.PI * 2); c.fill();
+    }
+    if (f === 'station') {
+      c.fillStyle = 'rgba(230,238,255,0.95)';
+      c.fillRect(cx - w * 0.03, cy - h * 0.16, w * 0.06, h * 0.32);           // корпус
+      c.beginPath(); c.arc(cx, cy - h * 0.18, w * 0.045, 0, Math.PI * 2); c.fill(); // купол
+      c.fillStyle = 'rgba(120,170,255,0.85)';
+      c.fillRect(cx - w * 0.32, cy - h * 0.02, w * 0.22, h * 0.045);          // панель лево
+      c.fillRect(cx + w * 0.10, cy - h * 0.02, w * 0.22, h * 0.045);          // панель право
+      const hg = c.createRadialGradient(cx, cy, 0, cx, cy, w * 0.5);
+      hg.addColorStop(0, 'rgba(150,190,255,0.22)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = hg; c.fillRect(0, 0, w, h);
+    }
+    if (f === 'sunset') {
+      const sg = c.createRadialGradient(cx, h * 0.62, 0, cx, h * 0.62, w * 0.34);
+      sg.addColorStop(0, 'rgba(255,200,110,0.95)'); sg.addColorStop(0.4, 'rgba(255,140,80,0.55)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+      c.fillStyle = sg; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#ffb45a'; c.beginPath(); c.arc(cx, h * 0.62, w * 0.14, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#0a0810';
+      c.beginPath(); c.moveTo(0, h * 0.8);
+      for (let x = 0; x <= w; x += w / 8) c.lineTo(x, h * 0.8 + Math.sin(x * 0.05 + p.id.length) * h * 0.03);
+      c.lineTo(w, h); c.lineTo(0, h); c.fill();
+    }
+    // виньетка
+    const vg = c.createRadialGradient(cx, cy, h * 0.2, cx, cy, h * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)');
+    c.fillStyle = vg; c.fillRect(0, 0, w, h);
+    return cv;
+  }
+
+  const Gallery = {
+    cache: {},
+    poster(id) {
+      if (!this.cache[id]) this.cache[id] = genPosterCanvas(posterById(id), 300, 420);
+      return this.cache[id];
+    },
+    frags(id) {
+      const G = Meta.gallery;
+      if (!G.frags[id]) G.frags[id] = Array(GAL_FRAGS).fill(false);
+      return G.frags[id];
+    },
+    unlocked(id) { return this.frags(id).filter(Boolean).length; },
+    isDone(id) { return this.unlocked(id) >= GAL_FRAGS; },
+    doneCount() { return POSTERS.filter(p => this.isDone(p.id)).length; },
+    activeId() {
+      const G = Meta.gallery;
+      if (G.active && !this.isDone(G.active)) return G.active;
+      const next = POSTERS.find(p => !this.isDone(p.id));
+      return next ? next.id : null;
+    },
+    // выдать n случайных закрытых фрагментов; вернёт true, если постер собран
+    addFrag(id, n, silent) {
+      const arr = this.frags(id);
+      const closed = arr.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+      let opened = 0;
+      while (n-- > 0 && closed.length) {
+        const k = Math.floor(Math.random() * closed.length);
+        arr[closed.splice(k, 1)[0]] = true; opened++;
+      }
+      Meta.save();
+      if (opened > 0 && !silent) toast('🖼 +1 фрагмент постера «' + posterById(id).name + '» (' + this.unlocked(id) + '/' + GAL_FRAGS + ')');
+      if (this.isDone(id)) {
+        if (Meta.gallery.active === id) Meta.gallery.active = null;
+        Meta.save();
+        Audio2.sfx('reward');
+        UI.banner('ПОСТЕР СОБРАН!', true);
+        toast('🖼 «' + posterById(id).name + '» — можно поставить на фон поля!');
+        Meta.checkAchievements();
+        return true;
+      }
+      return false;
+    },
+    // дроп фрагментов за очищенные линии: ~30% на линию + гарантированно каждая 10-я линия
+    onLines(n) {
+      const id = this.activeId();
+      if (!id) return;
+      this._lc = (this._lc || 0) + n;
+      let give = 0;
+      for (let i = 0; i < n; i++) if (Math.random() < 0.3) give++;
+      if (this._lc >= 10) { this._lc = 0; give++; }
+      if (give > 0) this.addFrag(id, give);
+    },
+    setBg(id) {
+      Meta.gallery.bg = (id === Meta.gallery.bg) ? null : id;
+      Meta.save();
+      Game.staticDirty = true;
+      toast(Meta.gallery.bg ? '🖼 Постер на фоне поля' : 'Фон поля сброшен');
+    }
+  };
+
   // ---------- Достижения (25) ----------
   // metric: (S) => текущее значение; S — глобальная статистика
   const ACHIEVEMENTS = [
@@ -903,7 +1138,9 @@
     { id: 'skins3',      ico: '🎨', name: 'Коллекционер',      desc: 'Собрать 3 скина',                   target: 3,    metric: S => Meta.skinsOwned.length },
     { id: 'skinsAll',    ico: '🌈', name: 'Модник',            desc: 'Собрать все скины',                 target: SKINS.length, metric: S => Meta.skinsOwned.length },
     { id: 'streak7',     ico: '🔥', name: 'Недельный воин',    desc: 'Стрик 7 дней подряд',               target: 7,    metric: S => S.bestStreak },
-    { id: 'duel1',       ico: '⚔️', name: 'Дуэлянт',           desc: 'Принять или бросить вызов',         target: 1,    metric: S => S.duels }
+    { id: 'duel1',       ico: '⚔️', name: 'Дуэлянт',           desc: 'Принять или бросить вызов',         target: 1,    metric: S => S.duels },
+    { id: 'gal1',        ico: '🖼', name: 'Первый постер',     desc: 'Собрать постер в Галерее',          target: 1,    metric: S => Gallery.doneCount() },
+    { id: 'galAll',      ico: '🌌', name: 'Хранитель галереи', desc: 'Собрать все 12 постеров',           target: 12,   metric: S => Gallery.doneCount() }
   ];
 
   // ---------- Экспедиция: 30 миссий ----------
@@ -1134,6 +1371,7 @@
       sprintBest: null, ultraBest: 0, marathonBest: 0
     }, store.get('stats', {})),
     league: store.get('league', { week: weekKey(), scores: [] }),
+    gallery: store.get('gallery', { frags: {}, active: null, bg: null }),
 
     save() {
       store.set('dust', this.dust, true);
@@ -1147,6 +1385,7 @@
       store.set('daily', this.daily);
       store.set('stats', this.stats, true);
       store.set('league', this.league);
+      store.set('gallery', this.gallery, true);
     },
     addDust(n, silent) {
       this.dust = Math.max(0, this.dust + n);
@@ -1186,7 +1425,7 @@
 
     // применить свежие значения из localStorage (после облачной синхронизации)
     applyLocal(keys) {
-      const FIELDS = ['dust', 'skin', 'skinsOwned', 'noAds', 'goCounter', 'achDone', 'expedition', 'streak', 'daily', 'league'];
+      const FIELDS = ['dust', 'skin', 'skinsOwned', 'noAds', 'goCounter', 'achDone', 'expedition', 'streak', 'daily', 'league', 'gallery'];
       keys.forEach(k => {
         if (k === 'stats') { Object.assign(this.stats, store.get('stats', {})); return; }
         if (FIELDS.indexOf(k) === -1) return;
@@ -1471,6 +1710,8 @@
         Audio2.sfx('clear' + Math.min(n, 3));
       }
       if (this.combo >= 2) UI.banner('Комбо ×' + (this.combo + 1), false);
+      // дроп фрагментов постеров (2.1)
+      Gallery.onLines(n);
       // уровень
       if (this.mode === 'marathon' || (this.mode === 'expedition' && !(this.mission && this.mission.level))) {
         const nl = Math.floor(this.lines / 10) + 1;
@@ -1713,6 +1954,17 @@
       // фон поля
       c.fillStyle = skin.bg;
       c.fillRect(0, 0, W, H);
+      // собранный постер из Галереи — подложка поля (2.1)
+      if (Meta.gallery && Meta.gallery.bg && Gallery.isDone(Meta.gallery.bg)) {
+        const img = Gallery.poster(Meta.gallery.bg);
+        const s = Math.max(W / img.width, H / img.height);
+        const dw = img.width * s, dh = img.height * s;
+        c.globalAlpha = 0.5;
+        c.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+        c.globalAlpha = 1;
+        c.fillStyle = 'rgba(4,5,10,0.45)';
+        c.fillRect(0, 0, W, H);
+      }
       // сетка
       c.strokeStyle = skin.grid;
       c.lineWidth = 1;
@@ -1979,6 +2231,7 @@
         return items.filter(it => {
           if (it === 'no_ads_forever') return !Meta.noAds;
           if (it.indexOf('skin_') === 0) return Meta.skinsOwned.indexOf(it.slice(5)) === -1;
+          if (it.indexOf('poster_') === 0) return !Gallery.isDone(it.slice(7));
           return false;
         });
       } catch (e) { return []; }
@@ -1991,6 +2244,10 @@
         const list = await this.syncPurchases();
         list.forEach(it => {
           if (it === 'no_ads_forever') this.grantNoAds();
+          else if (it.indexOf('poster_') === 0) {
+            const p = POSTERS.find(x => x.id === it.slice(7));
+            if (p) Gallery.addFrag(p.id, GAL_FRAGS, true);
+          }
           else { const s = skinById(it.slice(5)); if (s) this.grantSkin(s); }
         });
       } catch (e) {}
@@ -2065,6 +2322,32 @@
       Meta.noAds = true; Meta.save();
       UI.renderSkins();
       toast('🚫 Реклама отключена навсегда!');
+    },
+    // ----- постеры Галереи (2.1) -----
+    async buyPoster(p) {
+      if (Gallery.isDone(p.id)) { Gallery.setBg(p.id); UI.renderGallery(); return; }
+      if (VK.ready) {
+        let paid = false;
+        try {
+          const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'poster_' + p.id });
+          (window.__sfPayLog = window.__sfPayLog || []).push('poster_' + p.id + ' => ' + JSON.stringify(res));
+          paid = !!(res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id));
+        } catch (e) {
+          (window.__sfPayLog = window.__sfPayLog || []).push('poster_' + p.id + ' ERR ' + JSON.stringify((e && (e.error_data || e.message)) || e));
+        }
+        if (!paid) {
+          const got = await this.syncPurchases();
+          paid = got.indexOf('poster_' + p.id) !== -1;
+        }
+        if (paid) { Gallery.addFrag(p.id, GAL_FRAGS, true); UI.renderGallery(); }
+        else toast('Покупка отменена');
+      } else {
+        // вне VK: фрагменты за пыль (5 шт за 75 ✦)
+        if (Meta.dust < 75) { toast('Не хватает пыли: нужно 75 ✦'); return; }
+        Meta.addDust(-75, true);
+        Gallery.addFrag(p.id, 5);
+        UI.renderGallery();
+      }
     }
   };
 
@@ -2244,6 +2527,76 @@
       });
       $('skin-noads').onclick = () => Shop.buyNoAds();
       Shop.healPurchases(); // довыдать оплаченное, если мост в прошлый раз не вернул успех
+    },
+
+    // ----- галерея постеров (2.1) -----
+    renderGallery() {
+      const active = Gallery.activeId();
+      const cards = POSTERS.map(p => {
+        const done = Gallery.isDone(p.id);
+        const un = Gallery.unlocked(p.id);
+        const isActive = p.id === active;
+        const isBg = Meta.gallery.bg === p.id;
+        const prog = done ? (isBg ? '🖼 на фоне поля' : '✓ собран') : (un + '/' + GAL_FRAGS + (isActive ? ' · собирается' : ''));
+        return `<div class="gal-card ${isActive ? 'active' : ''} ${done ? 'gal-done' : ''}" data-poster="${p.id}">
+          <canvas id="gal-${p.id}" width="150" height="210"></canvas>
+          <div class="gal-name">${p.name}</div>
+          <div class="gal-prog">${prog}</div>
+        </div>`;
+      }).join('');
+      let bar = '';
+      if (active) {
+        const p = posterById(active);
+        bar = `<div class="gal-bar">
+          <button class="btn btn-primary" id="gal-ad">📺 Фрагмент за рекламу</button>
+          <button class="btn btn-gold" id="gal-buy">${VK.ready ? 'Купить за ' + p.votes + ' гол.' : '+5 фрагментов за 75 ✦'}</button>
+        </div>
+        <p style="font-size:11px;color:var(--faint);margin-top:8px;line-height:1.5;">Фрагменты падают за очищенные линии (~30% на линию, гарантированно — каждая 10-я). Собери все 20, чтобы поставить постер на фон поля.</p>`;
+      } else {
+        bar = `<p style="font-size:12px;color:var(--dim);margin-top:12px;text-align:center;">🏆 Все постеры собраны! Тапни по карточке — поставить или снять с фона поля.</p>`;
+      }
+      this.modal('🖼 Галерея · ' + Gallery.doneCount() + '/' + POSTERS.length, '<div class="gal-grid">' + cards + '</div>' + bar);
+      // прорисовка карточек: постер + тёмные плитки на закрытые фрагменты
+      POSTERS.forEach(p => {
+        const cv = $('gal-' + p.id);
+        if (!cv) return;
+        const c = cv.getContext('2d');
+        const img = Gallery.poster(p.id);
+        c.drawImage(img, 0, 0, cv.width, cv.height);
+        if (!Gallery.isDone(p.id)) {
+          const arr = Gallery.frags(p.id);
+          const fw = cv.width / GAL_COLS, fh = cv.height / GAL_ROWS;
+          for (let i = 0; i < GAL_FRAGS; i++) {
+            if (arr[i]) continue;
+            const fx = (i % GAL_COLS) * fw, fy = Math.floor(i / GAL_COLS) * fh;
+            c.fillStyle = 'rgba(6,7,14,0.92)';
+            c.fillRect(fx + 0.5, fy + 0.5, fw - 1, fh - 1);
+            c.fillStyle = 'rgba(160,170,200,0.35)';
+            c.font = '700 ' + Math.floor(fh * 0.3) + 'px Manrope, sans-serif';
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillText('?', fx + fw / 2, fy + fh / 2);
+          }
+        }
+      });
+      document.querySelectorAll('[data-poster]').forEach(el => {
+        el.onclick = () => {
+          const p = posterById(el.dataset.poster);
+          if (Gallery.isDone(p.id)) { Gallery.setBg(p.id); this.renderGallery(); return; }
+          Meta.gallery.active = p.id; Meta.save();
+          this.renderGallery();
+          toast('🖼 Собираем: «' + p.name + '»');
+        };
+      });
+      const adBtn = $('gal-ad');
+      if (adBtn) adBtn.onclick = () => {
+        if (!Gallery.activeId()) return;
+        const id = Gallery.activeId();
+        this.closeModal();
+        Ads.showRewarded(() => { Gallery.addFrag(id, 1); this.renderGallery(); });
+      };
+      const buyBtn = $('gal-buy');
+      if (buyBtn) buyBtn.onclick = () => Shop.buyPoster(posterById(active));
+      Shop.healPurchases();
     },
 
     // ----- лига -----
@@ -2433,6 +2786,7 @@
     });
     $('btn-ach').addEventListener('click', () => UI.renderAch());
     $('btn-skins').addEventListener('click', () => UI.renderSkins());
+    $('btn-gallery').addEventListener('click', () => UI.renderGallery());
     $('btn-league').addEventListener('click', () => UI.renderLeague());
     $('btn-duel').addEventListener('click', () => UI.renderDuel());
     $('btn-tut').addEventListener('click', () => { UI._pendingMode = null; UI.showTutorial(false); });
