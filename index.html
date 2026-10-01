@@ -450,6 +450,8 @@
     <header class="topbar" style="width:100%;max-width:620px;">
       <div class="brand"><span class="logo">Звездо<em>пад</em></span><span class="age-badge">0+</span></div>
       <div class="spacer"></div>
+      <span class="chip" id="chip-rank" title="Звание">🎖 <span id="rank-val">Юнга</span></span>
+      <span class="chip gold hidden" id="chip-pass" title="Звёздный пропуск">⭐ <span id="pass-val"></span></span>
       <span class="chip" id="chip-streak" title="Стрик дней">🔥 <span id="streak-val">0</span></span>
       <span class="chip gold" id="chip-dust" title="Звёздная пыль">✦ <span id="dust-val">0</span></span>
       <button class="icon-btn" id="btn-theme" title="Тема">🌙</button>
@@ -906,9 +908,24 @@
       colors: { I: '#e8e8ee', O: '#c8c8d0', T: '#a8a8b2', S: '#dedee4', Z: '#9898a2', J: '#b8b8c2', L: '#d0d0d8' } },
     { id: 'comet', name: 'Комета', desc: 'Хвост из частиц', dust: 3000, votes: 120,
       bg: '#080a14', grid: 'rgba(160,200,255,0.05)', star: '190,215,255',
-      colors: { I: '#9adfff', O: '#ffe8b0', T: '#d0b8ff', S: '#a0ffd8', Z: '#ffa0b8', J: '#a0c0ff', L: '#ffc898' } }
+      colors: { I: '#9adfff', O: '#ffe8b0', T: '#d0b8ff', S: '#a0ffd8', Z: '#ffa0b8', J: '#a0c0ff', L: '#ffc898' } },
+    { id: 'starlit', name: 'Звёздный час', desc: 'Эксклюзив Звёздного пропуска', dust: 0, votes: 0, pass: true,
+      bg: '#0d0a18', grid: 'rgba(255,217,138,0.06)', star: '255,225,160',
+      colors: { I: '#ffe9a8', O: '#ffd98a', T: '#f0c8ff', S: '#c8ffe0', Z: '#ffb8c8', J: '#c0d4ff', L: '#ffe0b8' } }
   ];
   function skinById(id) { return SKINS.find(s => s.id === id) || SKINS[0]; }
+
+  // ---------- Звания (2.1): ранг от лучшего счёта ----------
+  const RANKS = [
+    { min: 0,      ico: '🌱', name: 'Юнга' },
+    { min: 5000,   ico: '🚀', name: 'Космонавт' },
+    { min: 15000,  ico: '🛰', name: 'Пилот' },
+    { min: 30000,  ico: '🧭', name: 'Штурман' },
+    { min: 60000,  ico: '⭐', name: 'Капитан' },
+    { min: 100000, ico: '🌟', name: 'Командор' },
+    { min: 200000, ico: '👑', name: 'Адмирал флота' }
+  ];
+  function rankIdxFor(score) { let i = 0; RANKS.forEach((r, k) => { if (score >= r.min) i = k; }); return i; }
 
   // ---------- Галерея постеров (2.1): 12 постеров по 20 фрагментов ----------
   // Постеры генерируются процедурно (seeded) — без внешних картинок и копирайта.
@@ -1162,7 +1179,8 @@
     { id: 'gal1',        ico: '🖼', name: 'Первый постер',     desc: 'Собрать постер в Галерее',          target: 1,    metric: S => Gallery.doneCount() },
     { id: 'galAll',      ico: '🌌', name: 'Хранитель галереи', desc: 'Собрать все 12 постеров',           target: 12,   metric: S => Gallery.doneCount() },
     { id: 'meteor1',     ico: '💰', name: 'Первая добыча',     desc: 'Забрать выигрыш в «Метеоре»',       target: 1,    metric: S => (S.meteorBest || 0) > 0 ? 1 : 0 },
-    { id: 'meteorX10',   ico: '🔥', name: 'Горячая рука',      desc: 'Дойти до множителя ×10 в «Метеоре»', target: 10,  metric: S => S.meteorMaxMult || 0 }
+    { id: 'meteorX10',   ico: '🔥', name: 'Горячая рука',      desc: 'Дойти до множителя ×10 в «Метеоре»', target: 10,  metric: S => S.meteorMaxMult || 0 },
+    { id: 'rank5',       ico: '🎖', name: 'Командор',          desc: 'Получить звание «Командор»',        target: 5,    metric: S => S.rankIdx || 0 }
   ];
 
   // ---------- Экспедиция: 30 миссий ----------
@@ -1391,10 +1409,11 @@
       bestScore: 0, bestLevel: 1, bestCombo: 0, holds: 0,
       missions: 0, bestStreak: 0, duels: 0,
       sprintBest: null, ultraBest: 0, marathonBest: 0,
-      meteorBest: 0, meteorMaxMult: 0
+      meteorBest: 0, meteorMaxMult: 0, rankIdx: 0
     }, store.get('stats', {})),
     league: store.get('league', { week: weekKey(), scores: [] }),
     gallery: store.get('gallery', { frags: {}, active: null, bg: null }),
+    pass: store.get('pass', { until: 0, lastDaily: null }),
 
     save() {
       store.set('dust', this.dust, true);
@@ -1409,7 +1428,30 @@
       store.set('stats', this.stats, true);
       store.set('league', this.league);
       store.set('gallery', this.gallery, true);
+      store.set('pass', this.pass, true);
     },
+    // ----- Звёздный пропуск (2.1) -----
+    hasPass() { return Date.now() < this.pass.until; },
+    passDays() { return this.hasPass() ? Math.ceil((this.pass.until - Date.now()) / 86400000) : 0; },
+    grantPassDays(days) {
+      this.pass.until = Math.max(Date.now(), this.pass.until) + days * 86400000;
+      this.save(); this.updatePassUI();
+      Audio2.sfx('reward');
+      toast('⭐ Звёздный пропуск активен — ' + this.passDays() + ' дн.!');
+    },
+    updatePassUI() {
+      const chipRank = $('chip-rank'), chipPass = $('chip-pass');
+      if (chipRank) {
+        const r = RANKS[this.rankIdx()];
+        chipRank.classList.remove('hidden');
+        $('rank-val').textContent = r.ico + ' ' + r.name;
+      }
+      if (chipPass) {
+        chipPass.classList.toggle('hidden', !this.hasPass());
+        if (this.hasPass()) $('pass-val').textContent = this.passDays() + ' дн.';
+      }
+    },
+    rankIdx() { return rankIdxFor(this.stats.bestScore); },
     addDust(n, silent) {
       this.dust = Math.max(0, this.dust + n);
       this.updateDustUI();
@@ -1441,6 +1483,12 @@
       const amount = this.DAILY_LADDER[this.dailyDay() - 1] * mult;
       this.daily = { date: new Date().toDateString(), doubled: mult === 2 };
       this.addDust(amount, true);
+      // бонус пропуска: +150 ✦ ежедневно
+      if (this.hasPass() && this.pass.lastDaily !== this.daily.date) {
+        this.pass.lastDaily = this.daily.date;
+        this.addDust(150, true);
+        setTimeout(() => toast('⭐ Пропуск: +150 ✦ бонусом'), 600);
+      }
       this.save();
       return amount;
     },
@@ -1448,7 +1496,7 @@
 
     // применить свежие значения из localStorage (после облачной синхронизации)
     applyLocal(keys) {
-      const FIELDS = ['dust', 'skin', 'skinsOwned', 'noAds', 'goCounter', 'achDone', 'expedition', 'streak', 'daily', 'league', 'gallery'];
+      const FIELDS = ['dust', 'skin', 'skinsOwned', 'noAds', 'goCounter', 'achDone', 'expedition', 'streak', 'daily', 'league', 'gallery', 'pass'];
       keys.forEach(k => {
         if (k === 'stats') { Object.assign(this.stats, store.get('stats', {})); return; }
         if (FIELDS.indexOf(k) === -1) return;
@@ -1585,7 +1633,10 @@
         this.mission = Object.assign({ idx }, MISSIONS[idx]);
       }
       this.duel = opts.duel || null;
-      this.rng = this.duel ? mulberry32(this.duel.seed) : Math.random;
+      this.daily = !!opts.daily; // Доска дня: одинаковые фигуры у всех (2.1)
+      this.rng = this.daily
+        ? mulberry32(posterSeed(new Date().toDateString()))
+        : (this.duel ? mulberry32(this.duel.seed) : Math.random);
       this.board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
       this.queue = []; this.hold = null; this.holdUsed = false;
       this.score = 0; this.lines = 0; this.combo = -1;
@@ -1829,12 +1880,25 @@
         toast(`🛰 Миссия ${this.mission.n} выполнена! +${this.mission.reward} ✦`);
       }
       if (this.duel) S.duels++;
-      // пыль за игру (в Метеоре — от эффективного счёта)
-      const dustGain = this.mode === 'meteor'
+      // пыль за игру (в Метеоре — от эффективного счёта; пропуск: +50%)
+      let dustGain = this.mode === 'meteor'
         ? Math.floor(effScore / 200)
         : Math.floor(this.score / 500) + this.lines * 2;
+      if (Meta.hasPass()) dustGain = Math.round(dustGain * 1.5);
       if (dustGain > 0) Meta.addDust(dustGain, true);
       if (this.score > 0) Meta.leagueSubmit(this.mode === 'meteor' ? effScore : this.score);
+      // звание: повышение = пробник Звёздного пропуска на 2 дня (как VIP у Monolife)
+      const rIdx = rankIdxFor(S.bestScore);
+      if (rIdx > (S.rankIdx || 0)) {
+        S.rankIdx = rIdx;
+        Meta.pass.until = Math.max(Date.now(), Meta.pass.until) + 2 * 86400000;
+        setTimeout(() => {
+          UI.banner('НОВОЕ ЗВАНИЕ: ' + RANKS[rIdx].name.toUpperCase(), true);
+          Audio2.sfx('record');
+          toast('🎖 «' + RANKS[rIdx].name + '»! Подарок: 2 дня Звёздного пропуска');
+          Meta.updatePassUI();
+        }, 450);
+      }
       Meta.save();
       Meta.checkAchievements();
       if (record) Audio2.sfx('record');
@@ -2295,6 +2359,7 @@
         const items = (d && d.items) || [];
         return items.filter(it => {
           if (it === 'no_ads_forever') return !Meta.noAds;
+          if (it === 'star_pass') return !Meta.hasPass();
           if (it.indexOf('skin_') === 0) return Meta.skinsOwned.indexOf(it.slice(5)) === -1;
           if (it.indexOf('poster_') === 0) return !Gallery.isDone(it.slice(7));
           return false;
@@ -2309,6 +2374,7 @@
         const list = await this.syncPurchases();
         list.forEach(it => {
           if (it === 'no_ads_forever') this.grantNoAds();
+          else if (it === 'star_pass') Meta.grantPassDays(30);
           else if (it.indexOf('poster_') === 0) {
             const p = POSTERS.find(x => x.id === it.slice(7));
             if (p) Gallery.addFrag(p.id, GAL_FRAGS, true);
@@ -2319,6 +2385,12 @@
       this._healing = false;
     },
     async buySkin(skin) {
+      // эксклюзив пропуска: либо бесплатно с активным пропуском, либо недоступен
+      if (skin.pass && !Meta.skinsOwned.includes(skin.id)) {
+        if (Meta.hasPass()) { this.grantSkin(skin); return; }
+        toast('⭐ Скин «' + skin.name + '» — эксклюзив Звёздного пропуска');
+        return;
+      }
       if (Meta.skinsOwned.includes(skin.id)) {
         Meta.skin = skin.id; Meta.save();
         Game.staticDirty = true; Render.drawMinis();
@@ -2388,6 +2460,31 @@
       UI.renderSkins();
       toast('🚫 Реклама отключена навсегда!');
     },
+    // ----- Звёздный пропуск (2.1) -----
+    async buyPass() {
+      if (Meta.hasPass()) { toast('⭐ Пропуск уже активен — осталось ' + Meta.passDays() + ' дн.'); return; }
+      if (VK.ready) {
+        let paid = false;
+        try {
+          const res = await VK.bridge.send('VKWebAppShowOrderBox', { type: 'item', item: 'star_pass' });
+          (window.__sfPayLog = window.__sfPayLog || []).push('star_pass => ' + JSON.stringify(res));
+          paid = !!(res && (res.status === 'success' || res.status === 'ok' || res.result === true || !!res.order_id));
+        } catch (e) {
+          (window.__sfPayLog = window.__sfPayLog || []).push('star_pass ERR ' + JSON.stringify((e && (e.error_data || e.message)) || e));
+        }
+        if (!paid) {
+          const got = await this.syncPurchases();
+          paid = got.indexOf('star_pass') !== -1;
+        }
+        if (paid) { Meta.grantPassDays(30); UI.renderSkins(); }
+        else toast('Покупка отменена. Пропуск доступен за 2000 ✦');
+      } else {
+        if (Meta.dust < 2000) { toast('Звёздный пропуск — 149 голосов или 2000 ✦'); return; }
+        Meta.addDust(-2000, true);
+        Meta.grantPassDays(30);
+        UI.renderSkins();
+      }
+    },
     // ----- постеры Галереи (2.1) -----
     async buyPoster(p) {
       if (Gallery.isDone(p.id)) { Gallery.setBg(p.id); UI.renderGallery(); return; }
@@ -2443,6 +2540,10 @@
       if (Game.mode === 'meteor') {
         title = '☄️ Метеор';
         desc = 'Каждый блок: скорость ↑ и множитель ↑. Кнопка «Забрать» (или клавиша C) фиксирует счёт × множитель. Переполнил стек — метеор сгорит.';
+      }
+      if (Game.daily) {
+        title = '🗓 Доска дня';
+        desc = 'Одинаковый набор фигур у всех игроков сегодня. Набери максимум и сравни счёт в Лиге недели!';
       }
       if (Game.mode === 'expedition' && Game.mission) {
         title = 'Миссия ' + Game.mission.n + '/30';
@@ -2590,10 +2691,10 @@
 
     // ----- скины -----
     renderSkins() {
-      const items = SKINS.map(s => {
+      const items = SKINS.filter(s => !s.pass || Meta.skinsOwned.includes(s.id) || Meta.hasPass()).map(s => {
         const owned = Meta.skinsOwned.includes(s.id);
         const active = Meta.skin === s.id;
-        const price = owned ? (active ? '✓ Надет' : 'Надеть') : (VK.ready ? s.votes + ' гол.' : s.dust + ' ✦');
+        const price = owned ? (active ? '✓ Надет' : 'Надеть') : (s.pass ? 'Получить' : (VK.ready ? s.votes + ' гол.' : s.dust + ' ✦'));
         return `<div class="skin-item ${active ? 'active' : ''}" data-skin="${s.id}" style="cursor:pointer;">
           <div class="skin-prev" style="background:${s.bg};">
             <i style="background:${s.colors.I}"></i><i style="background:${s.colors.O}"></i>
@@ -2614,11 +2715,20 @@
           </div>
           <button class="btn btn-sm ${Meta.noAds ? '' : 'btn-gold'}">${Meta.noAds ? '✓' : (VK.ready ? '299 гол.' : '1500 ✦')}</button>
         </div>`;
-      this.modal('🎨 Магазин скинов · ✦ ' + Meta.dust, items + noAds);
+      const pass = `<div class="skin-item" style="cursor:pointer;" id="skin-pass">
+          <div class="skin-prev" style="background:#0d0a18;align-items:center;justify-content:center;display:flex;font-size:20px;">⭐</div>
+          <div class="skin-info">
+            <div class="skin-name">Звёздный пропуск · 30 дней</div>
+            <div class="skin-desc">${Meta.hasPass() ? 'Активен ещё ' + Meta.passDays() + ' дн.' : '+50% пыли · +150 ✦ ежедневно · скин «Звёздный час»'}</div>
+          </div>
+          <button class="btn btn-sm ${Meta.hasPass() ? '' : 'btn-gold'}">${Meta.hasPass() ? '✓' : (VK.ready ? '149 гол.' : '2000 ✦')}</button>
+        </div>`;
+      this.modal('🎨 Магазин скинов · ✦ ' + Meta.dust, items + noAds + pass);
       document.querySelectorAll('[data-skin]').forEach(el => {
         el.onclick = () => Shop.buySkin(skinById(el.dataset.skin));
       });
       $('skin-noads').onclick = () => Shop.buyNoAds();
+      $('skin-pass').onclick = () => Shop.buyPass();
       Shop.healPurchases(); // довыдать оплаченное, если мост в прошлый раз не вернул успех
     },
 
@@ -2751,6 +2861,7 @@
         <div style="display:flex;flex-direction:column;gap:10px;">
           <button class="btn btn-gold btn-block" id="duel-new">🎲 Новый вызов (сыграть с сидом)</button>
           <button class="btn btn-primary btn-block" id="duel-share" ${best > 0 ? '' : 'disabled'}>📤 Поделиться вызовом</button>
+          <button class="btn btn-primary btn-block" id="duel-daily">🗓 Доска дня — одинаковые фигуры у всех</button>
         </div>
         <p style="font-size:11px;color:var(--faint);margin-top:12px;line-height:1.5;">Принявший открывает ссылку — игра сама предложит дуэль с теми же фигурами.</p>`;
       this.modal('⚔️ Дуэль «побей мой счёт»', html);
@@ -2763,6 +2874,7 @@
         toast('🎲 Сид зафиксирован — сыграй и поделись результатом');
       };
       $('duel-share').onclick = () => this.shareDuel(best);
+      $('duel-daily').onclick = () => { this.closeModal(); Game.start('marathon', { daily: true }); };
     },
     async shareDuel(score) {
       const seed = store.get('duelSeed', Math.floor(Math.random() * 1e9));
@@ -2845,6 +2957,7 @@
       $('best-meteor').textContent = S.meteorBest ? 'Лучшая добыча: ' + S.meteorBest.toLocaleString('ru-RU') : '';
       const doneCount = Meta.expedition.done.filter(Boolean).length;
       $('best-expedition').textContent = 'Пройдено: ' + doneCount + '/30';
+      Meta.updatePassUI();
       if (VK.user) $('menu-hello').textContent = 'Привет, ' + (VK.user.first_name || 'звёздный') + '!';
     }
   };
@@ -2945,6 +3058,7 @@
     bindUI();
     Meta.checkStreak();
     Meta.updateDustUI();
+    Meta.updatePassUI();
     Audio2.updateIcons();
     Render.drawMinis();
     Loop.start();
