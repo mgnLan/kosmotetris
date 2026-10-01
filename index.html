@@ -657,6 +657,11 @@
         this.bridge.subscribe((ev) => {
           const t = ev.detail && ev.detail.type;
           if (t === 'VKWebAppViewHide') SysPause.hide();
+          if (t === 'VKWebAppViewRestore') {
+            // WebView вернулся на передний план — rAF мог молча умереть,
+            // будим цикл сразу, без ожидания сторожа
+            try { Loop.safeTick(performance.now()); } catch (e) {}
+          }
           if (t === 'VKWebAppUpdateConfig' && Theme.mode === 'auto') {
             const sch = ev.detail.data && ev.detail.data.scheme;
             if (sch) Theme.apply(/dark|space_gray|client_dark/i.test(sch) ? 'dark' : 'light');
@@ -1901,18 +1906,29 @@
       }
     },
     start() {
+      if (this._started) return; this._started = true;
       const frame = (t) => { requestAnimationFrame(frame); this.safeTick(t); };
       requestAnimationFrame(frame);
-      // Сторож: в некоторых WebView (VK mobile) rAF заглушается —
-      // тогда цикл подхватывает таймер из воркера (он не троттлится).
+      // Сторож: в некоторых WebView (VK mobile) rAF заглушается без ViewHide —
+      // тогда цикл подхватывается таймерами. setInterval ставим ВСЕГДА, не только
+      // при падении воркера: blob-воркер в VK WebView может создаться молча и
+      // никогда не слать сообщения (модерация 08.09: «зависает на втором шаге»).
       const poke = () => {
         const now = performance.now();
-        if (now - this._tickAt > 500) this.safeTick(now);
+        const gap = now - this._tickAt;
+        if (gap > 2500 && Game.running && !Game.paused && !document.hidden) {
+          (window.__sfErrors = window.__sfErrors || []).push('watchdog: rAF gap ' + Math.round(gap) + 'ms');
+        }
+        if (gap > 500) this.safeTick(now);
       };
+      setInterval(poke, 250);
       try {
         const w = new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'], { type: 'text/javascript' })));
         w.onmessage = poke;
-      } catch (e) { setInterval(poke, 300); }
+      } catch (e) { /* таймерный сторож уже работает */ }
+      // возврат из фона/блокировки WebView — форсируем кадр сразу
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) poke(); });
+      window.addEventListener('focus', poke);
     }
   };
   // сбор необработанных ошибок — для диагностики зависаний на реальных устройствах
