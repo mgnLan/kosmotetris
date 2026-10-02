@@ -2391,7 +2391,7 @@
 
   // ---------- Главный цикл (единственный rAF + сторож) ----------
   const Loop = {
-    last: 0, _tickAt: 0, _errShown: false,
+    last: 0, _tickAt: 0, _errShown: false, _errRun: 0, _rafDead: 0, _fastIv: null, _boxShown: false,
     tick(t) {
       this._tickAt = performance.now();
       const dt = Math.min(0.05, (t - this.last) / 1000 || 0.016);
@@ -2405,24 +2405,59 @@
     safeTick(t) {
       // защита от «вечного зависания»: исключение в тике не должно
       // убивать rAF-цепочку — ловим, логируем, продолжаем кадры
-      try { this.tick(t); } catch (e) {
+      try {
+        this.tick(t);
+        this._errRun = 0;
+      } catch (e) {
         (window.__sfErrors = window.__sfErrors || []).push(String(e && e.stack || e).slice(0, 500));
+        this._errRun++;
         if (!this._errShown) { this._errShown = true; toast('⚠️ Сбой кадра — игра продолжается. Сообщите нам: ' + String(e && e.message || e).slice(0, 80)); }
+        // сбои идут подряд >2с — показываем закреплённую панель с диагностикой
+        if (this._errRun > 120) this.showCrashBox('⚠️ Игра поймала серию сбоев', String(e && e.stack || e).slice(0, 300));
       }
+    },
+    // закреплённая панель: текст + кнопка перезагрузки (не скрывается сама)
+    showCrashBox(title, errText) {
+      if (this._boxShown) return; this._boxShown = true;
+      const d = document.createElement('div');
+      d.id = 'crash-box';
+      d.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:rgba(18,22,38,.97);border:1px solid #ff6b6b;border-radius:12px;padding:12px 14px;color:#fff;font:13px/1.45 system-ui;box-shadow:0 8px 30px rgba(0,0,0,.5)';
+      d.innerHTML = '<b style="color:#ff8a8a">' + String(title).replace(/</g, '&lt;') + '</b><br><span style="color:#cdd3e0;font-size:12px;word-break:break-all">'
+        + String(errText || '').replace(/</g, '&lt;').slice(0, 300)
+        + '</span><br><button class="btn btn-primary" id="crash-reload" style="margin-top:10px">Перезапустить игру</button>';
+      document.body.appendChild(d);
+      $('crash-reload').onclick = () => { Loop.persistErrs(); location.reload(); };
+    },
+    persistErrs() {
+      try { store.set('sfErrLog', JSON.stringify((window.__sfErrors || []).slice(-10))); } catch (e) {}
     },
     start() {
       if (this._started) return; this._started = true;
-      const frame = (t) => { requestAnimationFrame(frame); this.safeTick(t); };
+      const frame = (t) => { this._rafAt = performance.now(); requestAnimationFrame(frame); this.safeTick(t); };
       requestAnimationFrame(frame);
-      // Сторож: в некоторых WebView (VK mobile) rAF заглушается без ViewHide —
+      // Сторож: в некоторых WebView (VK mobile/desktop) rAF заглушается без ViewHide —
       // тогда цикл подхватывается таймерами. setInterval ставим ВСЕГДА, не только
       // при падении воркера: blob-воркер в VK WebView может создаться молча и
       // никогда не слать сообщения (модерация 08.09: «зависает на втором шаге»).
       const poke = () => {
         const now = performance.now();
-        const gap = now - this._tickAt;
-        if (gap > 2500 && Game.running && !Game.paused && !document.hidden) {
-          (window.__sfErrors = window.__sfErrors || []).push('watchdog: rAF gap ' + Math.round(gap) + 'ms');
+        const gap = now - this._tickAt;            // свежесть последнего тика (любого источника)
+        const rafGap = now - (this._rafAt || 0);  // реальная живость rAF-цепочки
+        if (rafGap > 500) {
+          this._rafDead++;
+          // rAF молчит >5с: переводим цикл на быстрый таймер (WebView без rAF)
+          if (this._rafDead === 20 && !this._fastIv && !document.hidden) {
+            this._fastIv = setInterval(() => this.safeTick(performance.now()), 33);
+            (window.__sfErrors = window.__sfErrors || []).push('watchdog: rAF dead >5s, interval mode');
+          }
+          // rAF мёртв >10с на видимой странице — сообщаем игроку (перезагрузка по кнопке)
+          if (this._rafDead === 40 && !document.hidden) {
+            (window.__sfErrors = window.__sfErrors || []).push('watchdog: rAF dead >10s, shown crash box');
+            this.showCrashBox('⚠️ Кадры перестали отрисовываться', 'WebView не отдаёт кадры (rAF молчит ' + Math.round(rafGap / 1000) + 'с). Игра переведена в аварийный таймерный режим — прогресс сохраняется. Если картинка не ожила, перезапустите игру.');
+          }
+        } else {
+          this._rafDead = 0;
+          if (this._fastIv) { clearInterval(this._fastIv); this._fastIv = null; }
         }
         if (gap > 500) this.safeTick(now);
       };
@@ -2747,7 +2782,15 @@
       $('modal-body').innerHTML = html;
       $('modal-backdrop').classList.add('open');
     },
-    closeModal() { $('modal-backdrop').classList.remove('open'); },
+    closeModal() {
+      $('modal-backdrop').classList.remove('open');
+      // обучение ставит игру на паузу — снимаем её при ЛЮБОМ закрытии модалки
+      // (крестик/клик по фону шли мимо снятия паузы → игра висла навсегда)
+      if (this._tutPause) {
+        this._tutPause = false;
+        if (Game.running && !Game.over) Game.paused = false;
+      }
+    },
 
     fakeAd(text, done) {
       this.modal('📺 ' + text, '<p style="color:var(--dim);font-size:13px;text-align:center;padding:18px 0;">Реклама закроется через <b id="fake-ad-t">3</b>…</p>');
@@ -3209,6 +3252,15 @@
 
   // ---------- Запуск ----------
   function boot() {
+    // диагностика: если прошлая сессия зависла и сохранила лог — показать одним тостом
+    try {
+      const log = store.get('sfErrLog', null);
+      if (log) {
+        const arr = JSON.parse(log);
+        toast('⚠️ Прошлый запуск завис: ' + String(arr && arr[0] || '').slice(0, 90));
+        store.set('sfErrLog', null);
+      }
+    } catch (e) {}
     Theme.boot();
     BG.init();
     Render.init();
