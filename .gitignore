@@ -1,1 +1,5 @@
 *.json
+_srv.pid
+starfall_main.html
+debug.html
+_check.js
