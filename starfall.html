@@ -378,6 +378,15 @@
   .lb-row.me { background: var(--btn-bg); margin: 0 -8px; padding: 8px; border-radius: 10px; }
   .lb-row.me.pass { box-shadow: inset 0 0 0 1.5px rgba(255,217,138,0.65), 0 0 16px rgba(255,217,138,0.22); }
   .lb-row.me.pass .lb-name { color: var(--gold); font-weight: 800; }
+  .sec-title { font-size: 12.5px; font-weight: 800; color: var(--text); margin: 14px 0 4px; }
+  .progress-fill.boss { background: linear-gradient(90deg, #ff8a5a, #ff5a6e); }
+
+  /* ===== Босс-бар (2.2) ===== */
+  .boss-bar { display: flex; align-items: center; gap: 10px; padding: 6px 14px; flex-shrink: 0; }
+  .boss-bar.hidden { display: none; }
+  .boss-bar-track { flex: 1; height: 10px; border-radius: 999px; background: var(--btn-bg); border: 1px solid var(--hairline-soft); overflow: hidden; }
+  .boss-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ff8a5a, #ff5a6e); transition: width .5s ease; }
+  .boss-bar-text { font-size: 11px; font-weight: 800; color: var(--dim); white-space: nowrap; }
 
   .mission-item { display: flex; align-items: center; gap: 11px; padding: 9px 0; border-bottom: 1px solid var(--hairline-soft); font-size: 13px; }
   .mission-item:last-child { border-bottom: none; }
@@ -527,7 +536,11 @@
       <button class="icon-btn" id="btn-pause" title="Пауза (P)">⏸</button>
     </header>
 
-    <div class="game-body">
+      <div class="boss-bar hidden" id="boss-bar">
+        <div class="boss-bar-track"><div class="boss-bar-fill" id="boss-bar-fill"></div></div>
+        <span class="boss-bar-text" id="boss-bar-text">☄️</span>
+      </div>
+      <div class="game-body">
       <div class="game-group" id="game-group">
       <!-- left column (desktop) -->
       <div class="side-col">
@@ -929,6 +942,31 @@
   ];
   function rankIdxFor(score) { let i = 0; RANKS.forEach((r, k) => { if (score >= r.min) i = k; }); return i; }
 
+  // ---------- Лига 2.2: дивизионы, финальный спурт ----------
+  const DIVISIONS = [
+    { name: 'Новобранцы',     ico: '🌒', botLo: 300,   botHi: 2600 },
+    { name: 'Орбита',         ico: '🌓', botLo: 2200,  botHi: 7500 },
+    { name: 'Глубокий космос',ico: '🌔', botLo: 8000,  botHi: 24000 },
+    { name: 'Звёздная лига',  ico: '🌕', botLo: 26000, botHi: 90000 }
+  ];
+  const DIV_REWARD = [0, 150, 75, 25]; // 1-е, 2–3-е, остальные (✦) — только при игре
+  // финальный спурт: воскресенье 22:00–24:00 — очки лиги ×1.5
+  function finalSprintActive() {
+    const d = new Date();
+    return d.getDay() === 0 && d.getHours() >= 22;
+  }
+
+  // ---------- Экспедиция сообщества 2.2: личный вклад линиями за неделю ----------
+  const COMMUNITY_GOALS = [
+    { lines: 25,   reward: 50 },
+    { lines: 100,  reward: 150 },
+    { lines: 300,  reward: 300 },
+    { lines: 1000, reward: 800 }
+  ];
+
+  // ---------- PvE-босс «Вторжение» 2.2 ----------
+  function bossMaxHp(kills) { return 400 + kills * 250; }
+
   // ---------- Галерея постеров (2.1): 12 постеров по 20 фрагментов ----------
   // Постеры генерируются процедурно (seeded) — без внешних картинок и копирайта.
   const GAL_FRAGS = 20, GAL_COLS = 5, GAL_ROWS = 4;
@@ -1182,7 +1220,10 @@
     { id: 'galAll',      ico: '🌌', name: 'Хранитель галереи', desc: 'Собрать все 12 постеров',           target: 12,   metric: S => Gallery.doneCount() },
     { id: 'meteor1',     ico: '💰', name: 'Первая добыча',     desc: 'Забрать выигрыш в «Метеоре»',       target: 1,    metric: S => (S.meteorBest || 0) > 0 ? 1 : 0 },
     { id: 'meteorX10',   ico: '🔥', name: 'Горячая рука',      desc: 'Дойти до множителя ×10 в «Метеоре»', target: 10,  metric: S => S.meteorMaxMult || 0 },
-    { id: 'rank5',       ico: '🎖', name: 'Командор',          desc: 'Получить звание «Командор»',        target: 5,    metric: S => S.rankIdx || 0 }
+    { id: 'rank5',       ico: '🎖', name: 'Командор',          desc: 'Получить звание «Командор»',        target: 5,    metric: S => S.rankIdx || 0 },
+    { id: 'div3',        ico: '🌕', name: 'Звёздная лига',     desc: 'Дойти до дивизиона «Звёздная лига»', target: 3,   metric: S => Meta.division.div },
+    { id: 'boss1',       ico: '☄️', name: 'Защитник орбиты',   desc: 'Отбить первое вторжение',           target: 1,    metric: S => Meta.boss.kills },
+    { id: 'boss5',       ico: '🛡', name: 'Бастион флота',     desc: 'Отбить 5 вторжений',                target: 5,    metric: S => Meta.boss.kills }
   ];
 
   // ---------- Экспедиция: 30 миссий ----------
@@ -1416,6 +1457,10 @@
     league: store.get('league', { week: weekKey(), scores: [] }),
     gallery: store.get('gallery', { frags: {}, active: null, bg: null }),
     pass: store.get('pass', { until: 0, lastDaily: null }),
+    // 2.2: дивизион лиги (индекс DIVISIONS), вклад сообщества, босс недели
+    division: store.get('division', { div: 0 }),
+    community: store.get('community', { week: null, lines: 0, claimed: [] }),
+    boss: store.get('boss', { week: null, hp: 0, maxHp: 0, kills: 0, dmgWeek: 0 }),
 
     save() {
       store.set('dust', this.dust, true);
@@ -1431,6 +1476,9 @@
       store.set('league', this.league);
       store.set('gallery', this.gallery, true);
       store.set('pass', this.pass, true);
+      store.set('division', this.division);
+      store.set('community', this.community, true);
+      store.set('boss', this.boss, true);
     },
     // ----- Звёздный пропуск (2.1) -----
     hasPass() { return Date.now() < this.pass.until; },
@@ -1498,7 +1546,7 @@
 
     // применить свежие значения из localStorage (после облачной синхронизации)
     applyLocal(keys) {
-      const FIELDS = ['dust', 'skin', 'skinsOwned', 'noAds', 'goCounter', 'achDone', 'expedition', 'streak', 'daily', 'league', 'gallery', 'pass'];
+      const FIELDS = ['dust', 'skin', 'skinsOwned', 'noAds', 'goCounter', 'achDone', 'expedition', 'streak', 'daily', 'league', 'gallery', 'pass', 'division', 'community', 'boss'];
       keys.forEach(k => {
         if (k === 'stats') { Object.assign(this.stats, store.get('stats', {})); return; }
         if (FIELDS.indexOf(k) === -1) return;
@@ -1531,25 +1579,96 @@
     leagueSubmit(score) {
       if (this.league.week !== weekKey()) this.league = { week: weekKey(), scores: [] };
       const name = (VK.user && VK.user.first_name) || 'Вы';
+      const sub = finalSprintActive() ? Math.round(score * 1.5) : score;
       const ex = this.league.scores.find(s => s.me);
-      if (ex) ex.score = Math.max(ex.score, score);
-      else this.league.scores.push({ name, score, me: true });
+      if (ex) ex.score = Math.max(ex.score, sub);
+      else this.league.scores.push({ name, score: sub, me: true });
       this.save();
     },
-    leagueRows() {
-      if (this.league.week !== weekKey()) this.league = { week: weekKey(), scores: [] };
-      // боты-эталоны, детерминированные неделей
-      const rng = mulberry32([...this.league.week].reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
-      const bots = [
-        ['Астронавт Лена', 900 + Math.floor(rng() * 2600)],
-        ['Капитан Мир', 2200 + Math.floor(rng() * 5200)],
-        ['Звёздный кот', 400 + Math.floor(rng() * 1400)],
-        ['Навигатор Олег', 5200 + Math.floor(rng() * 9000)],
-        ['Комета-7', 1200 + Math.floor(rng() * 3000)]
-      ].map(([name, score]) => ({ name, score }));
+    // смена недели: итоги дивизиона → награда, повышение/вылет, сброс счёта
+    checkLeagueRollover() {
+      if (this.league.week === weekKey()) return;
+      const rows = this.leagueRows(true); // строки прошлой недели
+      const me = rows.find(r => r.me);
+      if (me) {
+        const place = rows.indexOf(me) + 1;
+        const reward = DIV_REWARD[place === 1 ? 0 : (place <= 3 ? 1 : 2)] + (this.division.div >= 2 ? 25 : 0);
+        if (reward > 0) {
+          Meta.addDust(reward, true);
+          toast('🏆 Итоги лиги: ' + place + '-е место в дивизионе «' + DIVISIONS[this.division.div].name + '» — +' + reward + ' ✦');
+        }
+        if (place <= 3 && this.division.div < DIVISIONS.length - 1) {
+          this.division.div++;
+          setTimeout(() => toast('⬆️ Повышение! Новый дивизион: «' + DIVISIONS[this.division.div].name + '»'), 900);
+        } else if (place > rows.length - 3 && this.division.div > 0) {
+          this.division.div--;
+          setTimeout(() => toast('⬇️ Вылет в дивизион «' + DIVISIONS[this.division.div].name + '». Отыграйся!'), 900);
+        }
+      }
+      this.league = { week: weekKey(), scores: [] };
+      this.save();
+    },
+    leagueRows(prevWeek) {
+      const wk = prevWeek ? this.league.week : weekKey();
+      if (!prevWeek && this.league.week !== wk) this.league = { week: wk, scores: [] };
+      // боты дивизиона, детерминированные неделей + дивизионом
+      const rng = mulberry32([...(wk + ':' + this.division.div)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
+      const D = DIVISIONS[this.division.div];
+      const names = ['Астронавт Лена', 'Капитан Мир', 'Звёздный кот', 'Навигатор Олег', 'Комета-7', 'Полярная Аня', 'Квант-9'];
+      const bots = names.map(name => ({ name, score: D.botLo + Math.floor(rng() * (D.botHi - D.botLo)) }));
       const all = bots.concat(this.league.scores);
       all.sort((a, b) => b.score - a.score);
       return all.slice(0, 10);
+    },
+    // ----- экспедиция сообщества (2.2): личный вклад, награды по порогам -----
+    communityAdd(lines) {
+      if (this.community.week !== weekKey()) this.community = { week: weekKey(), lines: 0, claimed: [] };
+      this.community.lines += lines;
+      let gained = 0;
+      COMMUNITY_GOALS.forEach((g, i) => {
+        if (this.community.lines >= g.lines && this.community.claimed.indexOf(i) === -1) {
+          this.community.claimed.push(i);
+          gained += g.reward;
+        }
+      });
+      if (gained > 0) {
+        this.addDust(gained, true);
+        toast('🌍 Экспедиция сообщества: +' + gained + ' ✦ за вклад (' + this.community.lines + ' линий за неделю)');
+      }
+      this.save();
+    },
+    // ----- босс «Вторжение» (2.2): урон = линии и очки любой игры -----
+    ensureBoss() {
+      if (this.boss.week !== weekKey() || this.boss.maxHp === 0) {
+        this.boss.week = weekKey();
+        this.boss.dmgWeek = 0;
+        if (this.boss.maxHp === 0) { this.boss.maxHp = bossMaxHp(this.boss.kills); this.boss.hp = this.boss.maxHp; }
+        this.save();
+      }
+    },
+    bossDamage(lines, score) {
+      this.ensureBoss();
+      const dmg = lines * 10 + Math.floor(score / 200);
+      if (dmg <= 0) return;
+      this.boss.hp -= dmg;
+      this.boss.dmgWeek += dmg;
+      let killed = false;
+      if (this.boss.hp <= 0) {
+        killed = true;
+        this.boss.kills++;
+        const reward = 200 + Math.min(600, this.boss.kills * 50);
+        this.addDust(reward, true);
+        this.boss.maxHp = bossMaxHp(this.boss.kills);
+        this.boss.hp = this.boss.maxHp;
+        setTimeout(() => {
+          UI.banner('ВТОРЖЕНИЕ ОТБИТО!', true);
+          Audio2.sfx('record');
+          toast('☄️ Босс разбит! Награда ' + reward + ' ✦ · следующий сильнее (' + this.boss.maxHp + ' HP)');
+          UI.updateBossBar();
+        }, 600);
+      }
+      this.save();
+      UI.updateBossBar();
     }
   };
 
@@ -1889,6 +2008,9 @@
       if (Meta.hasPass()) dustGain = Math.round(dustGain * 1.5);
       if (dustGain > 0) Meta.addDust(dustGain, true);
       if (this.score > 0) Meta.leagueSubmit(this.mode === 'meteor' ? effScore : this.score);
+      // 2.2: вклад в экспедицию сообщества и урон боссу от любой игры
+      Meta.communityAdd(this.lines);
+      Meta.bossDamage(this.lines, this.mode === 'meteor' ? effScore : this.score);
       // звание: повышение = пробник Звёздного пропуска на 2 дня (как VIP у Monolife)
       const rIdx = rankIdxFor(S.bestScore);
       if (rIdx > (S.rankIdx || 0)) {
@@ -2806,7 +2928,11 @@
 
     // ----- лига -----
     async renderLeague() {
+      Meta.checkLeagueRollover();
+      Meta.ensureBoss();
       const rows = Meta.leagueRows();
+      const D = DIVISIONS[Meta.division.div];
+      const pass = Meta.hasPass();
       let friendNote = '';
       if (VK.ready) {
         try {
@@ -2820,14 +2946,43 @@
       } else {
         friendNote = '<p style="font-size:11.5px;color:var(--faint);margin-bottom:10px;">Локальный рейтинг недели. В VK появится сравнение с друзьями.</p>';
       }
-      const pass = Meta.hasPass();
-      const html = friendNote + rows.map((r, i) => `
+      const ladder = rows.map((r, i) => `
         <div class="lb-row ${r.me ? 'me' : ''}${r.me && pass ? ' pass' : ''}">
           <span class="lb-rank ${i < 3 ? 'r' + (i + 1) : ''}">${i + 1}</span>
           <span class="lb-name">${r.name}${r.me && pass ? ' ⭐' : ''}${r.me ? ' (ты)' : ''}</span>
           <span class="lb-score">${r.score.toLocaleString('ru-RU')}</span>
         </div>`).join('');
-      this.modal('🏆 Лига недели · ' + weekKey() + (pass ? ' · ⭐ ты с пропуском' : ''), html);
+      const sprint = finalSprintActive()
+        ? '<p style="font-size:12px;font-weight:800;color:var(--gold);margin:10px 0 0;">⚡ ФИНАЛЬНЫЙ СПУРТ: очки лиги ×1.5 до конца недели!</p>'
+        : '<p style="font-size:11px;color:var(--faint);margin:10px 0 0;">⚡ Финальный спурт: в воскресенье 22:00–24:00 очки лиги ×1.5</p>';
+      // экспедиция сообщества
+      const C = Meta.community;
+      const nextGoal = COMMUNITY_GOALS.find((g, i) => C.claimed.indexOf(i) === -1);
+      const commHtml = `
+        <div class="sec-title">🌍 Экспедиция сообщества</div>
+        <div class="progress-track" style="margin:6px 0;"><div class="progress-fill" style="width:${nextGoal ? clamp(C.lines / nextGoal.lines * 100, 0, 100) : 100}%"></div></div>
+        <p style="font-size:11.5px;color:var(--dim);">Твой вклад: <b style="color:var(--text);">${C.lines} линий</b> за неделю${nextGoal ? ' · следующая награда: <b style="color:var(--gold);">+' + nextGoal.reward + ' ✦</b> за ' + nextGoal.lines + ' линий' : ' · все награды получены! 🏆'}<br>Общий счёт публикуется в <a href="https://vk.com/club241231050" target="_blank" rel="noopener" style="color:var(--accent);">сообществе игры</a>.</p>`;
+      // босс
+      const B = Meta.boss;
+      const bossHtml = `
+        <div class="sec-title">☄️ Вторжение · босс недели</div>
+        <div class="progress-track" style="margin:6px 0;"><div class="progress-fill boss" style="width:${clamp(B.hp / B.maxHp * 100, 0, 100)}%"></div></div>
+        <p style="font-size:11.5px;color:var(--dim);">HP: <b style="color:var(--text);">${Math.max(0, B.hp).toLocaleString('ru-RU')} / ${B.maxHp.toLocaleString('ru-RU')}</b> · твой урон за неделю: ${B.dmgWeek.toLocaleString('ru-RU')} · отбито: ${B.kills}<br>Урон наносит любая игра: 10 × линии + очки / 200. Убей — получишь пыль, следующий босс сильнее.</p>`;
+      const html = friendNote
+        + `<div class="sec-title">${D.ico} Дивизион «${D.name}» · топ-3 повышаются, низ-3 вылетают</div>`
+        + ladder + sprint + commHtml + bossHtml;
+      this.modal('🏆 Лига недели · ' + weekKey(), html);
+    },
+
+    // ----- босс-бар в игре -----
+    updateBossBar() {
+      const bar = $('boss-bar');
+      if (!bar) return;
+      const B = Meta.boss;
+      if (!B.maxHp) { bar.classList.add('hidden'); return; }
+      bar.classList.remove('hidden');
+      $('boss-bar-fill').style.width = clamp(B.hp / B.maxHp * 100, 0, 100) + '%';
+      $('boss-bar-text').textContent = '☄️ ' + Math.max(0, B.hp).toLocaleString('ru-RU') + ' / ' + B.maxHp.toLocaleString('ru-RU');
     },
 
     // ----- экспедиция -----
@@ -3060,6 +3215,9 @@
     Gestures.init();
     bindUI();
     Meta.checkStreak();
+    Meta.checkLeagueRollover();
+    Meta.ensureBoss();
+    UI.updateBossBar();
     Meta.updateDustUI();
     Meta.updatePassUI();
     Audio2.updateIcons();
