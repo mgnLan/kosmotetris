@@ -91,14 +91,27 @@
     padding-top: calc(10px + env(safe-area-inset-top, 0px));
     flex-shrink: 0;
   }
-  .brand { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-  .brand .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; white-space: nowrap; }
+  .brand { display: flex; align-items: baseline; gap: 8px; min-width: 0; overflow: hidden; }
+  .brand .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand .logo em { font-style: normal; color: var(--accent); }
   .age-badge {
     font-size: 10px; font-weight: 800; color: var(--dim);
     border: 1px solid var(--hairline); border-radius: 6px; padding: 1px 5px;
   }
   .topbar .spacer { flex: 1; }
+  /* узкие экраны: топбар не должен налезать сам на себя (модерация 09.10) */
+  @media (max-width: 480px) {
+    .topbar { gap: 6px; padding-left: 10px; padding-right: 10px; }
+    .brand { gap: 6px; }
+    .brand .logo { font-size: 17px; }
+    .age-badge { display: none; }
+    .chip { padding: 5px 8px; font-size: 11px; gap: 3px; }
+    .icon-btn { width: 36px; height: 36px; font-size: 15px; border-radius: 10px; }
+  }
+  @media (max-width: 380px) {
+    #chip-rank { display: none; }
+    #btn-theme { display: none; }
+  }
   .chip {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 6px 10px; border-radius: 999px;
@@ -2332,7 +2345,7 @@
         this.active = true; this.flicked = false;
         this.sx = e.clientX; this.sy = e.clientY; this.st = performance.now();
         this.accX = 0; this.accY = 0;
-        cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+        try { cv.setPointerCapture && cv.setPointerCapture(e.pointerId); } catch (err) { /* старые WebView бросают NotFoundError */ }
       });
       cv.addEventListener('pointermove', (e) => {
         if (!this.active || !Game.alive()) return;
@@ -2348,12 +2361,12 @@
         if (this.flicked) return;
         // горизонтальные шаги
         if (Math.abs(dx) > Math.abs(dy)) {
-          while (this.accX - dx <= -step) { this.accX -= step; Game.move(1); }
-          while (this.accX - dx >= step) { this.accX += step; Game.move(-1); }
+          while (dx - this.accX >= step) { this.accX += step; Game.move(1); }
+          while (this.accX - dx >= step) { this.accX -= step; Game.move(-1); }
         } else if (dy > 24) {
           // свайп вниз — ускорение
           Game.softHeld = true;
-          while (this.accY - dy <= -step) { this.accY -= step; Game.softDrop(); }
+          while (dy - this.accY >= step) { this.accY += step; Game.softDrop(); }
         }
       });
       const end = (e) => {
