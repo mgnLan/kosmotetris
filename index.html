@@ -43,7 +43,7 @@
     --faint: #8b90a4;
     --accent: #2f6fd6;
     --accent-2: #7a4fd0;
-    --gold: #b8801a;
+    --gold: #96650a;
     --danger: #c93a54;
     --ok: #1e8a4e;
     --shadow: 0 10px 30px rgba(30,40,80,0.14);
@@ -295,7 +295,9 @@
     position: absolute; left: 50%; top: 34%; z-index: 5; pointer-events: none;
     transform: translate(-50%, -50%) scale(0.4); opacity: 0;
     font-size: 30px; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap;
-    color: var(--text);
+    /* баннер всегда над ТЁМНЫМ полем — цвет не зависит от темы интерфейса,
+       иначе в светлой теме текст был тёмным на тёмном и исчезал */
+    color: #eef0f6; text-shadow: 0 2px 14px rgba(0,0,0,0.6), 0 0 4px rgba(0,0,0,0.4);
   }
   #banner.gold { color: #ffd98a; }
   #banner.show { animation: bannerPop 1.3s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
