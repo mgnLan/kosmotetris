@@ -447,6 +447,8 @@
   #toast.show { transform: translate(-50%, 0); opacity: 1; }
 
   .hidden { display: none !important; }
+  /* светлая тема отключена — кнопка переключателя не нужна */
+  #btn-theme { display: none; }
 </style>
 </head>
 <body>
@@ -764,31 +766,24 @@
   };
 
   // ---------- Theme ----------
+  // Тема ЗАФИКСИРОВАНА тёмной (космос). Светлая тема отключена: на части
+  // Android WebView она отрисовывалась со смешанными переменными (светлый фон
+  // + светлый --text) — замечание модерации «на белом фоне светлый текст».
+  // Теперь фон всегда тёмный, текст всегда светлый — на любом устройстве.
   const Theme = {
-    mode: store.get('theme', 'auto'), // 'auto' | 'dark' | 'light'
+    mode: 'dark',
     current: 'dark',
     apply(t) {
+      t = 'dark';
       this.current = t;
       document.documentElement.setAttribute('data-theme', t);
       const meta = document.querySelector('meta[name="theme-color"]');
-      if (meta) meta.setAttribute('content', t === 'dark' ? '#07080f' : '#eef1f7');
-      const icon = t === 'dark' ? '🌙' : '☀️';
-      $('btn-theme').textContent = this.mode === 'auto' ? '🌗' : icon;
+      if (meta) meta.setAttribute('content', '#07080f');
+      const btn = $('btn-theme');
+      if (btn) btn.textContent = '🌙';
     },
-    toggle() {
-      const next = this.current === 'dark' ? 'light' : 'dark';
-      this.mode = next;
-      store.set('theme', next);
-      this.apply(next);
-      BG.rebuild();
-    },
-    boot() {
-      let t = 'dark';
-      if (this.mode === 'auto') {
-        t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
-      } else t = this.mode;
-      this.apply(t);
-    }
+    toggle() { /* переключатель отключён вместе со светлой темой */ },
+    boot() { this.apply('dark'); }
   };
 
   // ---------- Audio: synth SFX + generative ambient ----------
